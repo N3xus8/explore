@@ -1,0 +1,38 @@
+[package]
+name = "spinoff"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# # [profile.release]
+# # strip = true
+
+[dependencies]
+anyhow = "1.0.100"
+winit = { version = "0.30.12", features = ["android-native-activity"] }
+env_logger = "0.11.8"
+log = "0.4.29"
+wgpu = "27.0.1"
+cfg-if = "1.0.4"
+
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+pollster = "0.4.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1.7"
+console_log = "1.0"
+wgpu = { version = "27.0.1", features = ["webgl"]}
+wasm-bindgen = "0.2.106"
+wasm-bindgen-futures = "0.4.56"
+web-sys = { version = "0.3.83", features = [
+    "Document",
+    "Window",
+    "Element",
+]}
+
+[[bin]]
+    name="spinoff_web"
+    path="src/main.rs" 
