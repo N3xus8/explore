@@ -1,0 +1,9 @@
+#Trunk.toml
+[server]
+# Command-line arguments to pass to the underlying server (often miniserve)
+# This example uses a common way to pass header flags.
+args = [
+  "--no-cache", # Recommended for development
+  "--header", "Access-Control-Allow-Origin: *",
+]
+

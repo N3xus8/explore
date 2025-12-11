@@ -1,0 +1,34 @@
+:8081 {
+	# CORS for images
+	@images path /images/*
+	@images_preflight {
+		method OPTIONS
+		path /images/*
+	}
+
+	# Preflight request handler
+	handle @images_preflight {
+		header Access-Control-Allow-Origin "http://localhost:8080"
+		header Access-Control-Allow-Credentials "true"
+		header Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+		header Access-Control-Allow-Headers "Content-Type"
+		header Access-Control-Max-Age "3600"
+		respond "" 204
+	}
+
+	# Actual image requests
+	handle @images {
+		root * /home/ubik/Programming/Rust/wgpu/spinoff/res
+		header Access-Control-Allow-Origin "http://localhost:8080"
+		header Access-Control-Allow-Credentials "true"
+		header Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+		header Access-Control-Allow-Headers "Content-Type"
+		encode gzip
+		file_server
+	}
+
+	# Everything else goes to Trunk
+	handle {
+		reverse_proxy localhost:8080
+	}
+}

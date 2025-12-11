@@ -1,21 +1,16 @@
-
 use std::sync::Arc;
+use winit::application::ApplicationHandler;
+use winit::event::{KeyEvent, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::{KeyCode, PhysicalKey};
-use winit::event::{KeyEvent, WindowEvent};
 use winit::window::Window;
-use winit::application::ApplicationHandler;
 
-#[cfg(target_arch = "wasm32")]
-use winit::event_loop::EventLoop;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::UnwrapThrowExt;
-
-
-
+#[cfg(target_arch = "wasm32")]
+use winit::event_loop::EventLoop;
 
 use crate::state::*;
-
 
 pub struct App {
     #[cfg(target_arch = "wasm32")]
@@ -44,12 +39,14 @@ impl ApplicationHandler<State> for App {
         {
             use wasm_bindgen::JsCast;
             use winit::platform::web::WindowAttributesExtWebSys;
-            
+            //use web_sys::console;
+
             const CANVAS_ID: &str = "canvas";
 
-            let window = wgpu::web_sys::window().unwrap_throw();
-            let document = window.document().unwrap_throw();
-            let canvas = document.get_element_by_id(CANVAS_ID).unwrap_throw();
+            let window = wgpu::web_sys::window().expect("error window");
+            let document = window.document().expect("error document");
+            let canvas = document.get_element_by_id(CANVAS_ID).expect("error canvas");
+            //console::log_1(&format!("Step X").into())?;
             let html_canvas_element = canvas.unchecked_into();
             window_attributes = window_attributes.with_canvas(Some(html_canvas_element));
         }
@@ -59,7 +56,7 @@ impl ApplicationHandler<State> for App {
         #[cfg(not(target_arch = "wasm32"))]
         {
             // If we are not on web we can use pollster to
-            // await the 
+            // await the
             self.state = Some(pollster::block_on(State::new(window)).unwrap());
         }
 
@@ -110,7 +107,20 @@ impl ApplicationHandler<State> for App {
             WindowEvent::CloseRequested => event_loop.exit(),
             WindowEvent::Resized(size) => state.resize(size.width, size.height),
             WindowEvent::RedrawRequested => {
-                state.render();
+                state.update();
+                match state.render() {
+
+                    Ok(_) => {}
+                    // Reconfigure the surface if it's lost or outdated
+                    Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
+                        let size = state.window.inner_size();
+                        state.resize(size.width, size.height);
+                    }
+                    Err(e) => {
+                        log::error!("Unable to render {}", e);
+                    }
+
+                };
             }
             WindowEvent::KeyboardInput {
                 event:
@@ -120,10 +130,8 @@ impl ApplicationHandler<State> for App {
                         ..
                     },
                 ..
-            } => match (code, key_state.is_pressed()) {
-                (KeyCode::Escape, true) => event_loop.exit(),
-                _ => {}
-            },
+            } => state.handle_key(event_loop, code, key_state.is_pressed()),
+
             _ => {}
         }
     }
