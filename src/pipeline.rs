@@ -1,7 +1,7 @@
 
 use anyhow::*;
 
-use crate::vertex::Vertex;
+use crate::vertex::{InstanceRaw, Vertex};
 pub struct Pipeline {
    pub pipeline: wgpu::RenderPipeline,
 }
@@ -10,7 +10,8 @@ impl Pipeline {
     pub fn build_render_pipeline(
                 device: &wgpu::Device,
                 config: &wgpu::SurfaceConfiguration,
-                texture_bind_group_layout: Vec<&wgpu::BindGroupLayout>,
+                texture_bind_group_layout: &wgpu::BindGroupLayout,
+                camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
         ) -> Result<Pipeline> {
 
 
@@ -27,7 +28,7 @@ impl Pipeline {
             let render_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &texture_bind_group_layout,                
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout],                
                 push_constant_ranges: &[],
             });
 
@@ -39,7 +40,7 @@ impl Pipeline {
                 vertex: wgpu::VertexState {
                     module: &shader,
                     entry_point: Some("vs_main"), // 1.
-                    buffers: &[Vertex::desc()], // 2.
+                    buffers: &[Vertex::desc(), InstanceRaw::desc()], // 2.
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 },
                 fragment: Some(wgpu::FragmentState { // 3.

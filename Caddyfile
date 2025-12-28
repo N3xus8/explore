@@ -1,6 +1,5 @@
 :8081 {
 	# CORS for images
-	@images path /images/*
 	@images_preflight {
 		method OPTIONS
 		path /images/*
@@ -11,18 +10,19 @@
 		header Access-Control-Allow-Origin "http://localhost:8080"
 		header Access-Control-Allow-Credentials "true"
 		header Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
-		header Access-Control-Allow-Headers "Content-Type"
+		header Access-Control-Allow-Headers "Content-Type, Range"
 		header Access-Control-Max-Age "3600"
 		respond "" 204
 	}
 
 	# Actual image requests
+	@images path /images/*
 	handle @images {
 		root * /home/ubik/Programming/Rust/wgpu/spinoff/res
 		header Access-Control-Allow-Origin "http://localhost:8080"
 		header Access-Control-Allow-Credentials "true"
-		header Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
-		header Access-Control-Allow-Headers "Content-Type"
+		#		header Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+		#		header Access-Control-Allow-Headers "Content-Type, Range"
 		encode gzip
 		file_server
 	}

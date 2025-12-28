@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
-use crate::{pipeline::Pipeline, texture, vertex::{INDICES, create_index_buffer, create_vertex_buffer}};
+use crate::{camera::{Camera, CameraController, CameraUniform, bind_group_for_camera_uniform, camera_buffer}, pipeline::Pipeline, texture, vertex::{INDICES, Instance, create_index_buffer, create_instance_buffer, create_vertex_buffer}};
 
 
 pub struct State {
@@ -16,8 +16,20 @@ pub struct State {
    // pub num_vertices: u32,
     pub index_buffer: wgpu::Buffer, 
     pub num_indices: u32,
+    #[allow(dead_code)]
     pub diffuse_texture: texture::Texture,
     pub diffuse_bind_group: wgpu::BindGroup,
+     #[allow(dead_code)]
+    pub another_texture: texture::Texture,
+    pub another_bind_group: wgpu::BindGroup,
+    is_space_pressed: bool,
+    camera: Camera,
+    camera_uniform: CameraUniform,
+    camera_buffer: wgpu::Buffer,
+    camera_bind_group: wgpu::BindGroup,
+    camera_controller: CameraController,
+    instances: Vec<Instance>,
+    instance_buffer: wgpu::Buffer,
     pub window: Arc<Window>,
 }
 
@@ -36,7 +48,7 @@ impl State {
         });
 
         // Surface
-        let surface = instance.create_surface(window.clone()).unwrap();
+        let surface = instance.create_surface(window.clone())?;
 
         // Adapter
         let adapter;
@@ -99,17 +111,6 @@ impl State {
             desired_maximum_frame_latency: 2,
         };
 
-        // Texture from Image
-
-        let url = "images/github-colored-logo.png";
-        let diffuse_texture = crate::texture::Texture::get_texture_from_image(&device, &queue, url).await?;
-
-        let (diffuse_bind_group_layout,diffuse_bind_group) = diffuse_texture.bind_group_for_texture(&device);
-
-        // Pipeline
-        let pipeline_struct= Pipeline::build_render_pipeline(&device,&config, vec!(&diffuse_bind_group_layout))? ;
-        let render_pipeline= pipeline_struct.pipeline ;
-
         // Vertex
         let vertex_buffer = create_vertex_buffer(&device)?;
 
@@ -120,6 +121,58 @@ impl State {
 
         let index_buffer = create_index_buffer(&device)?;
         let num_indices = INDICES.len() as u32;
+
+        // Texture from Image
+
+        let url = "images/github-colored-logo.png";
+        let diffuse_texture = crate::texture::Texture::get_texture_from_image(&device, &queue, url).await?;
+
+        let (diffuse_bind_group_layout,diffuse_bind_group) = diffuse_texture.bind_group_for_texture(&device);
+
+        let another_url = "images/github-icon-logo.png";
+        let another_texture = crate::texture::Texture::get_texture_from_image(&device, &queue, another_url).await?;        
+        let (_another_bind_group_layout,another_bind_group) = another_texture.bind_group_for_texture(&device);
+
+        // / 
+        // / I N S T A N C E S
+        // / 
+
+        let instances = Instance::generate_instances();
+        let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
+        let instance_buffer = create_instance_buffer(&device, &instance_data);
+ 
+        // / C A M E R A
+        // /
+        let camera = Camera::new(
+            // position the camera 1 unit up and 2 units back
+            // +z is out of the screen
+            (0.0, 1.0, 2.0),
+            // have it look at the origin
+            (0.0, 0.0, 0.0),
+            // which way is "up"
+            cgmath::Vector3::unit_y(),
+            config.width as f32 / config.height as f32,
+            45.0,
+            0.1,
+            100.0,
+        );
+
+        let mut camera_uniform = CameraUniform::new();
+        camera_uniform.update_view_proj(&camera);
+
+        let camera_buffer = camera_buffer(&camera_uniform, &device);
+        let (camera_bind_group_layout, camera_bind_group) =   bind_group_for_camera_uniform(&camera_buffer, &device);
+
+        let camera_controller = CameraController::new(0.1);
+        // /
+        // / P I P E L I N E 
+        // /
+
+        // Pipeline
+        let pipeline_struct= Pipeline::build_render_pipeline(&device,&config, &diffuse_bind_group_layout, &camera_bind_group_layout)? ;
+        let render_pipeline= pipeline_struct.pipeline ;
+
+
 
         Ok(Self {
             surface,
@@ -134,6 +187,16 @@ impl State {
             index_buffer,
             diffuse_texture,
             diffuse_bind_group,
+            another_texture,
+            another_bind_group,
+            is_space_pressed: false,
+            camera,
+            camera_uniform,
+            camera_buffer,
+            camera_bind_group,
+            camera_controller, 
+            instances,
+            instance_buffer,
             window,
         })
     }
@@ -148,7 +211,10 @@ impl State {
     }
 
     pub fn update(&mut self) {
-        // remove `todo!()`
+    self.camera_controller.update_camera(&mut self.camera);
+    self.camera_uniform.update_view_proj(&self.camera);
+    self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));       
+        
     }
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.window.request_redraw();
@@ -191,12 +257,21 @@ impl State {
             occlusion_query_set: None,
             timestamp_writes: None,
         });
-        render_pass.set_pipeline(&self.render_pipeline); 
-        render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
-        render_pass.draw_indexed(0..self.num_indices, 0, 0..1); 
 
+        let bind_group = if self.is_space_pressed {
+                &self.another_bind_group
+            } else {
+                &self.diffuse_bind_group
+            };
+
+        render_pass.set_pipeline(&self.render_pipeline); 
+        render_pass.set_bind_group(0, bind_group, &[]);
+        render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        //render_pass.draw_indexed(0..self.num_indices, 0, 0..1); 
+        render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
         drop(render_pass);
 
            
@@ -208,8 +283,13 @@ impl State {
 
     }
 
-    pub fn handle_key(&self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
+    pub fn handle_key(&mut self, event_loop: &ActiveEventLoop, code: KeyCode, is_pressed: bool) {
         match (code, is_pressed) {
+            (KeyCode::Space, is_pressed) => self.is_space_pressed = is_pressed,
+            (  KeyCode::KeyW | KeyCode::ArrowUp 
+             | KeyCode::KeyA | KeyCode::ArrowLeft
+             | KeyCode::KeyS | KeyCode::ArrowDown
+             | KeyCode::KeyD | KeyCode::ArrowRight, is_pressed) => self.camera_controller.handle_key(code, is_pressed),
             (KeyCode::Escape, true) => event_loop.exit(),
             _ => {}
         }
