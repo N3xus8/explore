@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
+use instant::Instant;
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
-use crate::{camera::{Camera, CameraController, CameraUniform, bind_group_for_camera_uniform, camera_buffer}, pipeline::Pipeline, texture, vertex::{INDICES, Instance, create_index_buffer, create_instance_buffer, create_vertex_buffer}};
+use crate::{camera::{Camera, CameraController, CameraUniform, bind_group_for_camera_uniform, camera_buffer}, extra::{Spin, SpinUniform}, model::{DrawModel, Model}, pipeline::Pipeline, resources, texture::{self, Texture}, vertex::{Instance, create_instance_buffer}};
 
 
 pub struct State {
@@ -12,10 +13,10 @@ pub struct State {
     pub config: wgpu::SurfaceConfiguration,
     pub is_surface_configured: bool,
     pub render_pipeline: wgpu::RenderPipeline,
-    pub vertex_buffer: wgpu::Buffer,
+   // pub vertex_buffer: wgpu::Buffer,
    // pub num_vertices: u32,
-    pub index_buffer: wgpu::Buffer, 
-    pub num_indices: u32,
+   // pub index_buffer: wgpu::Buffer, 
+   // pub num_indices: u32,
     #[allow(dead_code)]
     pub diffuse_texture: texture::Texture,
     pub diffuse_bind_group: wgpu::BindGroup,
@@ -30,6 +31,13 @@ pub struct State {
     camera_controller: CameraController,
     instances: Vec<Instance>,
     instance_buffer: wgpu::Buffer,
+    depth_texture: Texture,
+    obj_model: Model,
+    last_frame: Instant,
+    spin: Spin,
+    spin_uniform: SpinUniform,
+    spin_buffer: wgpu::Buffer,
+    spin_bind_group: wgpu::BindGroup,
     pub window: Arc<Window>,
 }
 
@@ -112,19 +120,22 @@ impl State {
         };
 
         // Vertex
-        let vertex_buffer = create_vertex_buffer(&device)?;
+        // let vertex_buffer = create_vertex_buffer(&device)?;
 
         // let num_vertices = VERTICES.len() as u32;
         // 
 
         // Indices
 
-        let index_buffer = create_index_buffer(&device)?;
-        let num_indices = INDICES.len() as u32;
+        // let index_buffer = create_index_buffer(&device)?;
+        // let num_indices = INDICES.len() as u32;
+
+
 
         // Texture from Image
 
-        let url = "images/github-colored-logo.png";
+        //let url = "images/github-colored-logo.png";
+        let url = "images/wgpu-logo.png";        
         let diffuse_texture = crate::texture::Texture::get_texture_from_image(&device, &queue, url).await?;
 
         let (diffuse_bind_group_layout,diffuse_bind_group) = diffuse_texture.bind_group_for_texture(&device);
@@ -132,6 +143,13 @@ impl State {
         let another_url = "images/github-icon-logo.png";
         let another_texture = crate::texture::Texture::get_texture_from_image(&device, &queue, another_url).await?;        
         let (_another_bind_group_layout,another_bind_group) = another_texture.bind_group_for_texture(&device);
+        
+
+        let obj_model =
+           resources::load_model("models/cube.obj", &device, &queue, &diffuse_bind_group_layout)
+            .await
+            .unwrap();
+
 
         // / 
         // / I N S T A N C E S
@@ -164,12 +182,33 @@ impl State {
         let (camera_bind_group_layout, camera_bind_group) =   bind_group_for_camera_uniform(&camera_buffer, &device);
 
         let camera_controller = CameraController::new(0.1);
+
+
+        // / D E P T H   T E X T U R E 
+        // /
+
+        let depth_texture = texture::Texture::create_depth_texture(&device, &config, "depth_texture");
+
+        // / S P I N
+
+        let last_frame = Instant::now();
+        let spin = Spin::new(1.5);
+        let spin_uniform = SpinUniform::new();
+        let spin_buffer = spin_uniform.create_spin_uniform_buffer(&device);
+        let (spin_bind_group_layout, spin_bind_group) = SpinUniform::bind_group_for_spin_uniform(&spin_buffer, &device);
+
         // /
         // / P I P E L I N E 
         // /
 
         // Pipeline
-        let pipeline_struct= Pipeline::build_render_pipeline(&device,&config, &diffuse_bind_group_layout, &camera_bind_group_layout)? ;
+        let pipeline_struct= Pipeline::build_render_pipeline(
+            &device,
+            &config, 
+            &diffuse_bind_group_layout, 
+            &camera_bind_group_layout,
+            &spin_bind_group_layout,
+        )? ;
         let render_pipeline= pipeline_struct.pipeline ;
 
 
@@ -181,10 +220,10 @@ impl State {
             config,
             is_surface_configured: false,
             render_pipeline,
-            vertex_buffer,
+        //    vertex_buffer,
         //    num_vertices,
-            num_indices,
-            index_buffer,
+        //    num_indices,
+        //   index_buffer,
             diffuse_texture,
             diffuse_bind_group,
             another_texture,
@@ -197,6 +236,13 @@ impl State {
             camera_controller, 
             instances,
             instance_buffer,
+            depth_texture,
+            obj_model,
+            last_frame,
+            spin_uniform,
+            spin_buffer,
+            spin_bind_group,
+            spin,
             window,
         })
     }
@@ -207,13 +253,41 @@ impl State {
             self.config.height = height;
             self.surface.configure(&self.device, &self.config);
             self.is_surface_configured = true;
+            self.camera.aspect = width as f32 / height as f32;
+
+            // This is a fix from chatgpt otherwise it only works for desktop not for browser.
+            self.camera_uniform.update_view_proj(&self.camera);
+            self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
         }
     }
 
     pub fn update(&mut self) {
-    self.camera_controller.update_camera(&mut self.camera);
-    self.camera_uniform.update_view_proj(&self.camera);
-    self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));       
+
+        // Delta time
+        let now = Instant::now();
+        let mut dt = (now - self.last_frame).as_secs_f32();
+        self.last_frame = now;
+
+        // Clamp for browser tab resume
+        dt = dt.min(0.1);
+
+        // Update logic
+        self.spin.update(dt);
+
+        // Update GPU data
+        self.spin_uniform
+            .update_from_angle(self.spin.angle());
+
+        self.queue.write_buffer(
+            &self.spin_buffer,
+            0,
+            bytemuck::bytes_of(&[self.spin_uniform]),
+        );
+
+        // Camera
+        self.camera_controller.update_camera(&mut self.camera);
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));       
         
     }
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
@@ -252,8 +326,15 @@ impl State {
                     }),
                     store: wgpu::StoreOp::Store,
                 },
-            })],
-            depth_stencil_attachment: None,
+            })],           
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+              view: &self.depth_texture.view,
+              depth_ops: Some(wgpu::Operations {
+              load: wgpu::LoadOp::Clear(1.0),
+              store: wgpu::StoreOp::Store,
+            }),
+             stencil_ops: None,
+           }),
             occlusion_query_set: None,
             timestamp_writes: None,
         });
@@ -267,11 +348,14 @@ impl State {
         render_pass.set_pipeline(&self.render_pipeline); 
         render_pass.set_bind_group(0, bind_group, &[]);
         render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
-        render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        render_pass.set_bind_group(2, &self.spin_bind_group, &[]);
         render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-        render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        //render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         //render_pass.draw_indexed(0..self.num_indices, 0, 0..1); 
-        render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
+        //render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
+       
+        render_pass.draw_mesh_instanced(&self.obj_model.meshes[0], 0..self.instances.len() as u32);
+
         drop(render_pass);
 
            

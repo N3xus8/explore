@@ -2,7 +2,7 @@ use std::sync::Arc;
 use winit::application::ApplicationHandler;
 use winit::event::{KeyEvent, WindowEvent};
 use winit::event_loop::ActiveEventLoop;
-use winit::keyboard::{KeyCode, PhysicalKey};
+use winit::keyboard::PhysicalKey;
 use winit::window::Window;
 
 #[cfg(target_arch = "wasm32")]
@@ -50,7 +50,16 @@ impl ApplicationHandler<State> for App {
             let html_canvas_element = canvas.unchecked_into();
             window_attributes = window_attributes.with_canvas(Some(html_canvas_element));
         }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            use crate::utils::load_icon;
 
+            let window_icon: Option<winit::window::Icon> = Some(load_icon("./assets/icon.png"));
+            window_attributes = window_attributes
+                .with_title("Ubik says Learn WGPU")
+                .with_window_icon(window_icon);
+        }
+        
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
         #[cfg(not(target_arch = "wasm32"))]

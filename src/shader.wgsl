@@ -5,7 +5,11 @@ struct CameraUniform {
 @group(1) @binding(0) // 1.
 var<uniform> camera: CameraUniform;
 
-
+struct SpinUniform {
+    model:  mat4x4<f32>,
+}
+@group(2) @binding(0)
+var<uniform> spin: SpinUniform;
 
 struct VertexInput {
     @location(0) position: vec3<f32>,
@@ -30,7 +34,7 @@ fn vs_main(
     model: VertexInput,
     instance: InstanceInput,
 ) -> VertexOutput {
-    
+
     var out: VertexOutput;
     // reassemble the matrix
     let model_matrix = mat4x4<f32>(
@@ -41,10 +45,10 @@ fn vs_main(
     );
 
     out.tex_coords = model.tex_coords;
-    out.clip_position = camera.view_proj * model_matrix * vec4<f32>(model.position, 1.0);
+    out.clip_position = camera.view_proj * model_matrix * spin.model * vec4<f32>(model.position, 1.0);
     return out;
 }
- 
+ //  
 
 // Fragment shader
 @group(0) @binding(0)

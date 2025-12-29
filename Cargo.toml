@@ -19,6 +19,8 @@ cfg-if = "1.0.4"
 #image="0.25.9"
 bytemuck={ version = "1.24", features = [ "derive" ] }
 cgmath = "0.18.0"
+tobj = { version = "4.0.3", default-features = false, features = ["async"]}
+instant = { version = "0.1.13", features = ["wasm-bindgen"] }
 
 [dependencies.image]
 version = "0.25.9"
@@ -38,7 +40,9 @@ web-sys = { version = "0.3.83", features = [
     "Document",
     "Window",
     "Element",
+    "Location",
 ]}
+reqwest = { version = "0.12.28" }
 
 [[bin]]
     name="spinoff_web"

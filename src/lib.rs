@@ -7,6 +7,10 @@ pub mod pipeline;
 pub mod vertex;
 pub mod texture;
 pub mod camera;
+pub mod model;
+pub mod resources;
+pub mod extra;
+pub mod depth_stencil;
 
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(

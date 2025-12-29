@@ -1,7 +1,8 @@
 
 use anyhow::*;
 
-use crate::vertex::{InstanceRaw, Vertex};
+use crate::{model::{ModelVertex, Vertex}, texture, vertex::InstanceRaw};
+use crate::vertex::Vertex as PrimitiveVertex;
 pub struct Pipeline {
    pub pipeline: wgpu::RenderPipeline,
 }
@@ -12,6 +13,7 @@ impl Pipeline {
                 config: &wgpu::SurfaceConfiguration,
                 texture_bind_group_layout: &wgpu::BindGroupLayout,
                 camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
+                spin_uniform_bind_group_layout: &wgpu::BindGroupLayout,
         ) -> Result<Pipeline> {
 
 
@@ -20,15 +22,10 @@ impl Pipeline {
                 source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
             });
 
-            // Pipeline Layout
-            // let bind_group_layouts = match texture_bind_group_layout {
-            //             Some(bind_group_layout) => vec![bind_group_layout],
-            //             None => vec![],
-            // };
             let render_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout],                
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout, &spin_uniform_bind_group_layout],                
                 push_constant_ranges: &[],
             });
 
@@ -40,7 +37,7 @@ impl Pipeline {
                 vertex: wgpu::VertexState {
                     module: &shader,
                     entry_point: Some("vs_main"), // 1.
-                    buffers: &[Vertex::desc(), InstanceRaw::desc()], // 2.
+                    buffers: &[ModelVertex::desc(), InstanceRaw::desc()], // 2.
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 },
                 fragment: Some(wgpu::FragmentState { // 3.
@@ -65,7 +62,13 @@ impl Pipeline {
                     // Requires Features::CONSERVATIVE_RASTERIZATION
                     conservative: false,
                 },
-                depth_stencil: None, // 1.
+                    depth_stencil: Some(wgpu::DepthStencilState {
+                        format: texture::Texture::DEPTH_FORMAT,
+                        depth_write_enabled: true,
+                        depth_compare: wgpu::CompareFunction::Less, 
+                        stencil: wgpu::StencilState::default(), 
+                        bias: wgpu::DepthBiasState::default(),
+                    }), 
                     multisample: wgpu::MultisampleState {
                         count: 1, // 2.
                         mask: !0, // 3.
@@ -76,4 +79,71 @@ impl Pipeline {
             });
         Ok(Self {pipeline: render_pipeline})
     }
+
+    pub fn mask_render_pipeline(
+            device: &wgpu::Device,
+            config: &wgpu::SurfaceConfiguration,
+            mask_bind_group_layout: &wgpu::BindGroupLayout,
+    )  -> Result<Pipeline> {
+
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("mirror_mask"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("mirror.wgsl").into()),
+            });
+
+        let mask_pipeline_layout =
+                device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("mask_pipeline_layout"),
+                bind_group_layouts: &[&mask_bind_group_layout,], 
+                push_constant_ranges: &[],
+            });
+
+        let mask_render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("Mask_Render_Pipeline"),
+                layout: Some(&mask_pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"), // 1.
+                    buffers: &[PrimitiveVertex::desc()], // 2.
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+                fragment: None,
+                primitive: wgpu::PrimitiveState::default(),
+/*                 primitive: wgpu::PrimitiveState {
+                    topology: wgpu::PrimitiveTopology::TriangleList, // 1.
+                    strip_index_format: None,
+                    front_face: wgpu::FrontFace::Ccw, // 2.
+                    cull_mode: Some(wgpu::Face::Back),
+                    // Setting this to anything other than Fill requires Features::NON_FILL_POLYGON_MODE
+                    polygon_mode: wgpu::PolygonMode::Fill,
+                    // Requires Features::DEPTH_CLIP_CONTROL
+                    unclipped_depth: false,
+                    // Requires Features::CONSERVATIVE_RASTERIZATION
+                    conservative: false,
+                }, */
+                    depth_stencil: Some(wgpu::DepthStencilState {
+                        format: wgpu::TextureFormat::Depth24PlusStencil8,
+                        depth_write_enabled: false,
+                        depth_compare: wgpu::CompareFunction::Always,
+                        stencil: wgpu::StencilState {
+                            front: wgpu::StencilFaceState {
+                                compare: wgpu::CompareFunction::Always,
+                                fail_op: wgpu::StencilOperation::Keep,
+                                depth_fail_op: wgpu::StencilOperation::Keep,
+                                pass_op: wgpu::StencilOperation::Replace,
+                            },
+                            back: wgpu::StencilFaceState::IGNORE,
+                            read_mask: 0xFF,
+                            write_mask: 0xFF,
+                        },
+                        bias: wgpu::DepthBiasState::default(),
+                    }), 
+                    multisample: wgpu::MultisampleState::default(),
+                    multiview: None, // 5.
+                    cache: None, // 6.
+            });
+
+            Ok(Self {pipeline: mask_render_pipeline})
+    }
+
 }

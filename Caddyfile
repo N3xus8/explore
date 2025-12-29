@@ -1,4 +1,7 @@
 :8081 {
+	# =======================
+	# CORS for images
+	# =======================
 	# CORS for images
 	@images_preflight {
 		method OPTIONS
@@ -27,6 +30,34 @@
 		file_server
 	}
 
+	# =======================
+	# Serve .obj files (text)
+	# =======================
+	@models_preflight {
+		method OPTIONS
+		path /models/*
+	}
+
+	handle @models_preflight {
+		header Access-Control-Allow-Origin "http://localhost:8080"
+		header Access-Control-Allow-Credentials "true"
+		header Access-Control-Allow-Methods "GET, HEAD, OPTIONS"
+		header Access-Control-Allow-Headers "Content-Type"
+		header Access-Control-Max-Age "3600"
+		respond "" 204
+	}
+
+	handle_path /models/* {
+		root * /home/ubik/Programming/Rust/wgpu/spinoff/res/models
+		header Access-Control-Allow-Origin "http://localhost:8080"
+		header Access-Control-Allow-Credentials "true"
+		header Content-Type text/plain
+		file_server
+	}
+
+	# =======================
+	# Everything else -> Trunk
+	# =======================
 	# Everything else goes to Trunk
 	handle {
 		reverse_proxy localhost:8080

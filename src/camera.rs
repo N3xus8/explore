@@ -33,10 +33,10 @@ impl Camera {
         // 1.
         let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
         // 2.
-        let proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-
+        let  proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+            
         // 3.
-        return OPENGL_TO_WGPU_MATRIX * proj * view;
+        return OPENGL_TO_WGPU_MATRIX  * proj * view;
     }
 }
 
@@ -61,10 +61,6 @@ impl CameraUniform {
     pub fn update_view_proj(&mut self, camera: &Camera) {
         self.view_proj = camera.build_view_projection_matrix().into();
     }
-
-
-
-
 }
 
     pub fn camera_buffer(

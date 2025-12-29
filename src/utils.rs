@@ -7,7 +7,11 @@ pub fn load_texture_from_image(
 ) -> anyhow::Result<wgpu::Texture> {
 
     // Image uses Rayon not available in Wasm
-    let img = image::open(url)?.flipv().into_rgba8();
+
+    let path = std::path::Path::new(env!("OUT_DIR"))
+            .join("res")
+            .join(url);
+    let img = image::open(path)?.flipv().into_rgba8();
 
     let width = img.width();
     let height = img.height();
@@ -51,4 +55,22 @@ pub fn load_texture_from_image(
     );
 
     Ok(texture)
+}
+
+use winit::window::Icon;
+
+pub fn load_icon(path: &str) -> Icon {
+    let img = image::open(path).expect("error opening image").to_rgba8();
+    let (width, height) = img.dimensions();
+    let rgba = img.into_raw();
+    Icon::from_rgba(rgba, width, height).expect("error convert image to rgba")
+}
+
+// Color correction. needed for web browser
+pub fn linear_to_srgb(linear: f64) -> f64 {
+    if linear <= 0.0031308 {
+        linear * 12.92
+    } else {
+        1.055 * linear.powf(1.0 / 2.4) - 0.055
+    }
 }
