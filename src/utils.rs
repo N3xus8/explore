@@ -57,6 +57,8 @@ pub fn load_texture_from_image(
     Ok(texture)
 }
 
+
+use cgmath::EuclideanSpace;
 use winit::window::Icon;
 
 pub fn load_icon(path: &str) -> Icon {
@@ -73,4 +75,18 @@ pub fn linear_to_srgb(linear: f64) -> f64 {
     } else {
         1.055 * linear.powf(1.0 / 2.4) - 0.055
     }
+}
+
+
+pub fn reflection_matrix(point: cgmath::Point3<f32>, normal: cgmath::Vector3<f32>) -> cgmath::Matrix4<f32> {
+    use cgmath::InnerSpace;
+    let n = normal.normalize();
+    let d = -n.dot(point.to_vec());
+
+    cgmath::Matrix4::from_cols(
+        cgmath::Vector4::new(1.0 - 2.0*n.x*n.x, -2.0*n.x*n.y,      -2.0*n.x*n.z,      0.0),
+        cgmath::Vector4::new(-2.0*n.y*n.x,      1.0 - 2.0*n.y*n.y, -2.0*n.y*n.z,      0.0),
+        cgmath::Vector4::new(-2.0*n.z*n.x,      -2.0*n.z*n.y,      1.0 - 2.0*n.z*n.z, 0.0),
+        cgmath::Vector4::new(-2.0*n.x*d,        -2.0*n.y*d,        -2.0*n.z*d,        1.0),
+    )
 }

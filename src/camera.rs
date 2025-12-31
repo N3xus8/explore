@@ -38,6 +38,16 @@ impl Camera {
         // 3.
         return OPENGL_TO_WGPU_MATRIX  * proj * view;
     }
+
+    pub fn build_view_only_matrix(&self) -> cgmath::Matrix4<f32> {
+        let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
+        view
+    }
+
+    pub fn build_proj_only_matrix(&self) -> cgmath::Matrix4<f32> {
+        let  proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
+        return OPENGL_TO_WGPU_MATRIX  * proj;
+    }
 }
 
 // We need this for Rust to store our data correctly for the shaders

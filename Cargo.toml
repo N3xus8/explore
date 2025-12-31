@@ -1,5 +1,5 @@
 [package]
-name = "spinoff"
+name = "explore"
 version = "0.1.0"
 edition = "2021"
 
@@ -45,7 +45,7 @@ web-sys = { version = "0.3.83", features = [
 reqwest = { version = "0.12.28" }
 
 [[bin]]
-    name="spinoff_web"
+    name="explore_web"
     path="src/main.rs" 
 
 [build-dependencies]

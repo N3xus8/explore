@@ -82,19 +82,18 @@ impl Pipeline {
 
     pub fn mask_render_pipeline(
             device: &wgpu::Device,
-            config: &wgpu::SurfaceConfiguration,
-            mask_bind_group_layout: &wgpu::BindGroupLayout,
+            camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
     )  -> Result<Pipeline> {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("mirror_mask"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("mirror.wgsl").into()),
+                label: Some("stencil"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("stencil.wgsl").into()),
             });
 
         let mask_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("mask_pipeline_layout"),
-                bind_group_layouts: &[&mask_bind_group_layout,], 
+                bind_group_layouts: &[&camera_uniform_bind_group_layout,], 
                 push_constant_ranges: &[],
             });
 
@@ -104,7 +103,7 @@ impl Pipeline {
                 vertex: wgpu::VertexState {
                     module: &shader,
                     entry_point: Some("vs_main"), // 1.
-                    buffers: &[PrimitiveVertex::desc()], // 2.
+                    buffers: &[PrimitiveVertex::desc(), InstanceRaw::desc()], // 2.
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 },
                 fragment: None,
@@ -139,11 +138,81 @@ impl Pipeline {
                         bias: wgpu::DepthBiasState::default(),
                     }), 
                     multisample: wgpu::MultisampleState::default(),
-                    multiview: None, // 5.
-                    cache: None, // 6.
+                    multiview: None, 
+                    cache: None, 
             });
 
             Ok(Self {pipeline: mask_render_pipeline})
     }
 
+    pub fn reflection_render_pipeline(
+            device: &wgpu::Device,
+            config: &wgpu::SurfaceConfiguration,
+            texture_bind_group_layout: &wgpu::BindGroupLayout,
+            camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
+            spin_uniform_bind_group_layout: &wgpu::BindGroupLayout,
+
+    )  -> Result<Pipeline> {
+
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("shader"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+            });
+        
+        let render_pipeline_layout =
+                device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                label: Some("Render Pipeline Layout"),
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout, &spin_uniform_bind_group_layout],                
+                push_constant_ranges: &[],
+            });
+
+        let reflected_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("Reflected_scene_pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex:  wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("vs_main"), // 1.
+                    buffers: &[ModelVertex::desc(), InstanceRaw::desc()], // 2.
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                },
+            fragment: Some(wgpu::FragmentState { // 3.
+                    module: &shader,
+                    entry_point: Some("fs_main"),
+                    targets: &[Some(wgpu::ColorTargetState { // 4.
+                        format: config.format,
+                        blend: Some(wgpu::BlendState::REPLACE),
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                }),
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: wgpu::TextureFormat::Depth24PlusStencil8,
+                depth_write_enabled: true,
+                depth_compare: wgpu::CompareFunction::Less,
+                stencil: wgpu::StencilState {
+                    front: wgpu::StencilFaceState {
+                        compare: wgpu::CompareFunction::Equal,
+                        fail_op: wgpu::StencilOperation::Keep,
+                        depth_fail_op: wgpu::StencilOperation::Keep,
+                        pass_op: wgpu::StencilOperation::Keep,
+                    },
+                    back: wgpu::StencilFaceState::IGNORE,
+                    read_mask: 0xFF,
+                    write_mask: 0x00,
+                },
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            primitive: wgpu::PrimitiveState {
+                front_face: wgpu::FrontFace::Ccw, //  TODO: Check and tune
+                cull_mode: None, // important: reflection flips winding
+                ..Default::default()
+            },
+            multiview: None, 
+            cache: None, 
+            multisample: wgpu::MultisampleState::default(),
+        });
+
+        Ok(Self {pipeline: reflected_pipeline})
+
+    }
 }

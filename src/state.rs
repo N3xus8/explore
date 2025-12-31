@@ -3,7 +3,7 @@ use std::sync::Arc;
 use instant::Instant;
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
-use crate::{camera::{Camera, CameraController, CameraUniform, bind_group_for_camera_uniform, camera_buffer}, extra::{Spin, SpinUniform}, model::{DrawModel, Model}, pipeline::Pipeline, resources, texture::{self, Texture}, vertex::{Instance, create_instance_buffer}};
+use crate::{camera::{Camera, CameraController, CameraUniform, bind_group_for_camera_uniform, camera_buffer}, depth_stencil::{self, StencilTexture}, extra::{Spin, SpinUniform}, model::{DrawModel, Model}, pipeline::Pipeline, resources, texture::{self, Texture}, vertex::{INDICES, Instance, VERTICES, create_index_buffer, create_instance_buffer, create_vertex_buffer}};
 
 
 pub struct State {
@@ -13,10 +13,10 @@ pub struct State {
     pub config: wgpu::SurfaceConfiguration,
     pub is_surface_configured: bool,
     pub render_pipeline: wgpu::RenderPipeline,
-   // pub vertex_buffer: wgpu::Buffer,
-   // pub num_vertices: u32,
-   // pub index_buffer: wgpu::Buffer, 
-   // pub num_indices: u32,
+    pub vertex_buffer: wgpu::Buffer,
+    pub num_vertices: u32,
+    pub index_buffer: wgpu::Buffer, 
+    pub num_indices: u32,
     #[allow(dead_code)]
     pub diffuse_texture: texture::Texture,
     pub diffuse_bind_group: wgpu::BindGroup,
@@ -31,13 +31,18 @@ pub struct State {
     camera_controller: CameraController,
     instances: Vec<Instance>,
     instance_buffer: wgpu::Buffer,
-    depth_texture: Texture,
+    //depth_texture: Texture,
     obj_model: Model,
     last_frame: Instant,
     spin: Spin,
     spin_uniform: SpinUniform,
     spin_buffer: wgpu::Buffer,
     spin_bind_group: wgpu::BindGroup,
+    depth_stencil: StencilTexture,
+    stencil_pipeline: wgpu::RenderPipeline,
+    reflection_pipeline: wgpu::RenderPipeline,
+    mirror_instance: Instance,
+    mirror_instance_buffer: wgpu::Buffer,
     pub window: Arc<Window>,
 }
 
@@ -120,15 +125,15 @@ impl State {
         };
 
         // Vertex
-        // let vertex_buffer = create_vertex_buffer(&device)?;
+        let vertex_buffer = create_vertex_buffer(&device)?;
 
-        // let num_vertices = VERTICES.len() as u32;
-        // 
+        let num_vertices = VERTICES.len() as u32;
+        
 
         // Indices
 
-        // let index_buffer = create_index_buffer(&device)?;
-        // let num_indices = INDICES.len() as u32;
+        let index_buffer = create_index_buffer(&device)?;
+        let num_indices = INDICES.len() as u32;
 
 
 
@@ -158,7 +163,11 @@ impl State {
         let instances = Instance::generate_instances();
         let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
         let instance_buffer = create_instance_buffer(&device, &instance_data);
- 
+
+        let mirror_instance = Instance::generate_instance(20.0, 1.0, 20.0, 45.0) ;
+        let mirror_instance_data = mirror_instance.to_raw();
+        let mirror_instance_buffer = create_instance_buffer(&device, &vec![mirror_instance_data]);
+
         // / C A M E R A
         // /
         let camera = Camera::new(
@@ -187,7 +196,12 @@ impl State {
         // / D E P T H   T E X T U R E 
         // /
 
-        let depth_texture = texture::Texture::create_depth_texture(&device, &config, "depth_texture");
+        // let depth_texture = texture::Texture::create_depth_texture(&device, &config, "depth_texture");
+
+        // / S T E N C I L  T E X T U R E 
+        // /
+
+        let depth_stencil = depth_stencil::StencilTexture::create_stencil_texture(&device, &config, "depth_stencil");
 
         // / S P I N
 
@@ -198,7 +212,7 @@ impl State {
         let (spin_bind_group_layout, spin_bind_group) = SpinUniform::bind_group_for_spin_uniform(&spin_buffer, &device);
 
         // /
-        // / P I P E L I N E 
+        // / P I P E L I N E S
         // /
 
         // Pipeline
@@ -211,6 +225,24 @@ impl State {
         )? ;
         let render_pipeline= pipeline_struct.pipeline ;
 
+        // Stencil Pipeline
+        let stencil_pipeline_struct = Pipeline::mask_render_pipeline(
+            &device,
+            &camera_bind_group_layout,
+        )?;
+
+        let stencil_pipeline = stencil_pipeline_struct.pipeline ;
+
+        // Reflection Pipeline
+
+        let reflection_pipeline_struct = Pipeline::reflection_render_pipeline(
+            &device, 
+            &config, 
+            &diffuse_bind_group_layout, 
+            &camera_bind_group_layout, 
+            &spin_bind_group_layout)?;
+
+        let reflection_pipeline = reflection_pipeline_struct.pipeline ;
 
 
         Ok(Self {
@@ -220,10 +252,10 @@ impl State {
             config,
             is_surface_configured: false,
             render_pipeline,
-        //    vertex_buffer,
-        //    num_vertices,
-        //    num_indices,
-        //   index_buffer,
+            vertex_buffer,
+            num_vertices,
+            num_indices,
+            index_buffer,
             diffuse_texture,
             diffuse_bind_group,
             another_texture,
@@ -236,13 +268,18 @@ impl State {
             camera_controller, 
             instances,
             instance_buffer,
-            depth_texture,
+         //   depth_texture,
             obj_model,
             last_frame,
             spin_uniform,
             spin_buffer,
             spin_bind_group,
             spin,
+            depth_stencil,
+            stencil_pipeline,
+            reflection_pipeline,
+            mirror_instance,
+            mirror_instance_buffer, // TODO review maybe reuse instance_buffer
             window,
         })
     }
@@ -257,7 +294,8 @@ impl State {
 
             // This is a fix from chatgpt otherwise it only works for desktop not for browser.
             self.camera_uniform.update_view_proj(&self.camera);
-            self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
+            //self.depth_texture = texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
+            self.depth_stencil = depth_stencil::StencilTexture::create_stencil_texture(&self.device, &self.config, "depth_stencil");
         }
     }
 
@@ -284,9 +322,38 @@ impl State {
             bytemuck::bytes_of(&[self.spin_uniform]),
         );
 
+        //  I N   F L U X 
+        use cgmath::InnerSpace;
+        use cgmath::{EuclideanSpace, Transform};
+        use crate::utils::reflection_matrix;
+
+        // 1. Get mirror plane from CPU-side transform
+        let scale: f32 = 1.0 ;
+        let mirror_transform  =  Instance::transform(&self.mirror_instance, scale);
+        let mirror_point = mirror_transform.transform_point(cgmath::Point3::origin());
+        let local_normal = cgmath::Vector3::unit_z();
+        let mirror_normal = 
+            mirror_transform
+                .transform_vector(local_normal)
+                .normalize();
+        // 2. Build reflection matrix
+        let reflection = reflection_matrix(mirror_point, mirror_normal);
+
+ 
+
         // Camera
         self.camera_controller.update_camera(&mut self.camera);
         self.camera_uniform.update_view_proj(&self.camera);
+
+        // 3. Build reflected camera
+        // /  TODO CLEAN HACK
+        let view = self.camera.build_view_only_matrix();
+        let projection = self.camera.build_proj_only_matrix();
+        let reflected_view = view * reflection ;
+        let proj_reflected_view =  projection * reflected_view ;
+        // / 
+
+
         self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));       
         
     }
@@ -308,29 +375,102 @@ impl State {
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
-            });
+        });
         
+
+        //
+        // S T E N C I L   P A S S
+        //
+
+        let mut stencil_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("stencil pass"),
+            color_attachments: &[],
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                view: &self.depth_stencil.view,
+                depth_ops: None,
+                stencil_ops: Some(wgpu::Operations {
+                    load: wgpu::LoadOp::Clear(0),
+                    store: wgpu::StoreOp::Store,
+                }),
+            }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+        stencil_pass.set_stencil_reference(1);
+        stencil_pass.set_pipeline(&self.stencil_pipeline);
+        stencil_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+        stencil_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        stencil_pass.set_vertex_buffer(1, self.mirror_instance_buffer.slice(..));
+        stencil_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        //stencil_pass.draw_indexed(0..self.num_indices, 0, 0..1); 
+        stencil_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
         
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("Render Pass"),
+
+        drop(stencil_pass);
+
+        // 
+        // /  R E F L E C T I O N   P A S S
+        //
+
+        let depth_stencil_attachment = wgpu::RenderPassDepthStencilAttachment {
+            view: &self.depth_stencil.view,
+
+            depth_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Clear(1.0), // <- clear depth
+                store: wgpu::StoreOp::Store,
+            }),
+
+            stencil_ops: Some(wgpu::Operations {
+                load: wgpu::LoadOp::Load, // <- keep mirror mask
+                store: wgpu::StoreOp::Store,
+            }),
+        };
+
+        let mut reflection_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("reflection pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &view,
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color {
-                        r: 0.6,
-                        g: 0.3,
-                        b: 0.1,
-                        a: 1.0,
-                    }),
+                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), // this is the actual first color writing
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            depth_stencil_attachment: Some(depth_stencil_attachment),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+
+        reflection_pass.set_pipeline(&self.reflection_pipeline);
+        reflection_pass.set_stencil_reference(1);
+        reflection_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+        reflection_pass.set_bind_group(1, &self.camera_bind_group, &[]);
+        reflection_pass.set_bind_group(2, &self.spin_bind_group, &[]);
+        reflection_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+
+        reflection_pass.draw_mesh_instanced(&self.obj_model.meshes[0], 0..self.instances.len() as u32);
+        
+        drop(reflection_pass);
+
+        // /
+        // T O T A L  S C E N E 
+        // /
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("Render Total Scene Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load, // <- DO NOT CLEAR
                     store: wgpu::StoreOp::Store,
                 },
             })],           
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-              view: &self.depth_texture.view,
+              view: &self.depth_stencil.view,
               depth_ops: Some(wgpu::Operations {
-              load: wgpu::LoadOp::Clear(1.0),
+              load: wgpu::LoadOp::Clear(1.0), // <- clear depth again
               store: wgpu::StoreOp::Store,
             }),
              stencil_ops: None,
@@ -355,7 +495,7 @@ impl State {
         //render_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
        
         render_pass.draw_mesh_instanced(&self.obj_model.meshes[0], 0..self.instances.len() as u32);
-
+        // TODO MIRROR 
         drop(render_pass);
 
            

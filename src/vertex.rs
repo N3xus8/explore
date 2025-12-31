@@ -1,7 +1,7 @@
 
 use anyhow::*;
 use wgpu::util::DeviceExt;
-use cgmath::prelude::*;
+use cgmath::{Matrix4, prelude::*};
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
@@ -130,6 +130,37 @@ impl Instance {
         
         instances
 
+    }
+
+    pub fn generate_instance(
+        x: f32,
+        y: f32,
+        z: f32,
+        angle: f32,
+    ) -> Instance {
+             let position = cgmath::Vector3 { x, y, z };
+
+
+             let rotation=   cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(angle));
+             
+
+                Instance {
+                    position, rotation,
+                }
+    }
+
+    pub fn translation(&self) -> cgmath::Matrix4<f32> {
+        Matrix4::from_translation(self.position)
+    }
+
+    pub fn rotation(&self) -> cgmath::Matrix4<f32> {
+        Matrix4::from(self.rotation)
+    }
+
+    pub fn transform(&self, scale: f32)  -> cgmath::Matrix4<f32> {
+        let scale = Matrix4::from_nonuniform_scale(scale, scale, 1.0);
+        self.translation() * self.rotation() * scale
+    
     }
 }
 
