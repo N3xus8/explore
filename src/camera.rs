@@ -48,6 +48,16 @@ impl Camera {
         let  proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
         return OPENGL_TO_WGPU_MATRIX  * proj;
     }
+
+    pub fn build_reflected_camera(&self, reflection: cgmath::Matrix4<f32>) -> cgmath::Matrix4<f32> {
+        // 3. Build reflected camera
+        // /  TODO CLEAN HACK
+        let view = self.build_view_only_matrix();
+        let projection = self.build_proj_only_matrix();
+        let reflected_view = view * reflection ;
+        return   projection * reflected_view ;
+        // / 
+    }
 }
 
 // We need this for Rust to store our data correctly for the shaders

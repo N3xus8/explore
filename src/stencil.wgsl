@@ -18,7 +18,7 @@ struct InstanceInput {
 };
 
 @vertex
-fn vs_main(in: VertexInput) -> @builtin(position) vec4<f32> {
+fn vs_main(in: VertexInput,  instance: InstanceInput,) -> @builtin(position) vec4<f32> {
 
     // reassemble the matrix
     let model_matrix = mat4x4<f32>(

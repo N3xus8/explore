@@ -63,7 +63,7 @@ impl Pipeline {
                     conservative: false,
                 },
                     depth_stencil: Some(wgpu::DepthStencilState {
-                        format: texture::Texture::DEPTH_FORMAT,
+                        format: texture::Texture::DEPTH_STENCIL_FORMAT,
                         depth_write_enabled: true,
                         depth_compare: wgpu::CompareFunction::Less, 
                         stencil: wgpu::StencilState::default(), 

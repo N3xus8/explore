@@ -113,3 +113,66 @@ impl Spin {
         self.angle
     }
 }
+//
+// Mirror plane Uniform
+
+#[repr(C)]
+#[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+struct MirrorPlaneUniform {
+    normal: [f32; 3],  // normal: world-space mirror normal
+    _pad1: f32,
+    point: [f32; 3], // point: world-space point on the mirror plane
+    _pad2: f32,
+}
+
+impl MirrorPlaneUniform {
+
+    pub fn new(normal: cgmath::Vector3<f32>, point: cgmath::Point3<f32>) -> MirrorPlaneUniform {
+
+        Self { normal: normal.into() , _pad1: 0.0, point: point.into() , _pad2: 0.0 }
+    }
+
+    pub fn create_bind_group_layout(
+        device: &wgpu::Device,
+        mirror_plane_buffer: &wgpu::Buffer,
+    ) -> (wgpu::BindGroupLayout, wgpu::BindGroup) {
+
+
+        let mirror_plane_bind_group_layout =
+        device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("mirror_plane_bind_group_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: Some(
+                            std::num::NonZeroU64::new(
+                                std::mem::size_of::<MirrorPlaneUniform>() as u64
+                            ).unwrap(),
+                        ),
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let mirror_plane_bind_group =
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("mirror_plane_bind_group"),
+                layout: &mirror_plane_bind_group_layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: mirror_plane_buffer.as_entire_binding(),
+                    },
+                ],
+        });
+
+        (mirror_plane_bind_group_layout, mirror_plane_bind_group)
+
+    }
+
+}

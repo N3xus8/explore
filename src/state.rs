@@ -3,7 +3,7 @@ use std::sync::Arc;
 use instant::Instant;
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
-use crate::{camera::{Camera, CameraController, CameraUniform, bind_group_for_camera_uniform, camera_buffer}, depth_stencil::{self, StencilTexture}, extra::{Spin, SpinUniform}, model::{DrawModel, Model}, pipeline::Pipeline, resources, texture::{self, Texture}, vertex::{INDICES, Instance, VERTICES, create_index_buffer, create_instance_buffer, create_vertex_buffer}};
+use crate::{camera::{Camera, CameraController, CameraUniform, bind_group_for_camera_uniform, camera_buffer}, depth_stencil::{self, StencilTexture}, extra::{Spin, SpinUniform}, model::{DrawModel, Model}, pipeline::Pipeline, resources, texture::{self, Texture}, utils::build_reflection_matrix, vertex::{INDICES, Instance, VERTICES, create_index_buffer, create_instance_buffer, create_vertex_buffer}};
 
 
 pub struct State {
@@ -164,7 +164,7 @@ impl State {
         let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
         let instance_buffer = create_instance_buffer(&device, &instance_data);
 
-        let mirror_instance = Instance::generate_instance(20.0, 1.0, 20.0, 45.0) ;
+        let mirror_instance = Instance::generate_instance(5.0, 1.0, 5.0, 0.0) ;
         let mirror_instance_data = mirror_instance.to_raw();
         let mirror_instance_buffer = create_instance_buffer(&device, &vec![mirror_instance_data]);
 
@@ -322,40 +322,9 @@ impl State {
             bytemuck::bytes_of(&[self.spin_uniform]),
         );
 
-        //  I N   F L U X 
-        use cgmath::InnerSpace;
-        use cgmath::{EuclideanSpace, Transform};
-        use crate::utils::reflection_matrix;
-
-        // 1. Get mirror plane from CPU-side transform
-        let scale: f32 = 1.0 ;
-        let mirror_transform  =  Instance::transform(&self.mirror_instance, scale);
-        let mirror_point = mirror_transform.transform_point(cgmath::Point3::origin());
-        let local_normal = cgmath::Vector3::unit_z();
-        let mirror_normal = 
-            mirror_transform
-                .transform_vector(local_normal)
-                .normalize();
-        // 2. Build reflection matrix
-        let reflection = reflection_matrix(mirror_point, mirror_normal);
-
- 
-
         // Camera
         self.camera_controller.update_camera(&mut self.camera);
-        self.camera_uniform.update_view_proj(&self.camera);
-
-        // 3. Build reflected camera
-        // /  TODO CLEAN HACK
-        let view = self.camera.build_view_only_matrix();
-        let projection = self.camera.build_proj_only_matrix();
-        let reflected_view = view * reflection ;
-        let proj_reflected_view =  projection * reflected_view ;
-        // / 
-
-
-        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));       
-        
+            
     }
     pub fn render(&mut self) -> Result<(), wgpu::SurfaceError> {
         self.window.request_redraw();
@@ -376,11 +345,22 @@ impl State {
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
         });
+
+        // Camera uniform normal mode (for non-reflected mode)
         
+        self.camera_uniform.update_view_proj(&self.camera);
+
+
 
         //
         // S T E N C I L   P A S S
         //
+
+        // Write Camera buffer
+
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));       
+        // /
+
 
         let mut stencil_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("stencil pass"),
@@ -403,14 +383,31 @@ impl State {
         stencil_pass.set_vertex_buffer(1, self.mirror_instance_buffer.slice(..));
         stencil_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
         //stencil_pass.draw_indexed(0..self.num_indices, 0, 0..1); 
-        stencil_pass.draw_indexed(0..self.num_indices, 0, 0..self.instances.len() as _);
-        
+        //stencil_pass.draw_indexed(0..self.num_indices, 0, 0..self.mirror_instance.len() as _);
+        stencil_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+
 
         drop(stencil_pass);
 
         // 
         // /  R E F L E C T I O N   P A S S
         //
+
+
+        //  I N   F L U X 
+
+        // Write Camera buffer
+        // 1. Get mirror plane from CPU-side transform
+        let scale: f32 = 1.0 ;
+        let mirror_transform  =  Instance::transform(&self.mirror_instance, scale);
+
+        let reflection = build_reflection_matrix(mirror_transform);
+
+        let reflected_camera: [[f32; 4]; 4] = self.camera.build_reflected_camera(reflection).into();
+
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[reflected_camera]));       
+
+        // /
 
         let depth_stencil_attachment = wgpu::RenderPassDepthStencilAttachment {
             view: &self.depth_stencil.view,
@@ -433,7 +430,12 @@ impl State {
                 depth_slice: None,
                 resolve_target: None,
                 ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), // this is the actual first color writing
+                    load: wgpu::LoadOp::Clear(wgpu::Color {
+                        r: 0.6,
+                        g: 0.3,
+                        b: 0.1,
+                        a: 1.0,
+                    }), // this is the actual first color writing
                     store: wgpu::StoreOp::Store,
                 },
             })],
@@ -456,6 +458,12 @@ impl State {
         // /
         // T O T A L  S C E N E 
         // /
+
+        // Write Camera buffer
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));       
+        //
+
+
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("Render Total Scene Pass"),
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
