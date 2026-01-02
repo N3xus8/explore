@@ -54,7 +54,7 @@ impl Camera {
         // /  TODO CLEAN HACK
         let view = self.build_view_only_matrix();
         let projection = self.build_proj_only_matrix();
-        let reflected_view = view * reflection ;
+        let reflected_view =  view * reflection  ;
         return   projection * reflected_view ;
         // / 
     }

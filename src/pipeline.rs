@@ -67,10 +67,10 @@ impl Pipeline {
                         format: wgpu::TextureFormat::Depth24PlusStencil8,
                         depth_write_enabled: true,
                         depth_compare: wgpu::CompareFunction::Less, 
-                       // stencil: wgpu::StencilState::default(), 
+                        //stencil: wgpu::StencilState::default(), 
                         stencil: wgpu::StencilState {
                             front: wgpu::StencilFaceState {
-                                compare: wgpu::CompareFunction::NotEqual,
+                                compare: wgpu::CompareFunction::Less,
                                 fail_op: wgpu::StencilOperation::Keep,
                                 depth_fail_op: wgpu::StencilOperation::Keep,
                                 pass_op: wgpu::StencilOperation::Keep,
@@ -79,6 +79,7 @@ impl Pipeline {
                             read_mask: 0xFF,
                             write_mask: 0x00,
                         }, 
+
                         bias: wgpu::DepthBiasState::default(),
                     }), 
                     multisample: wgpu::MultisampleState {

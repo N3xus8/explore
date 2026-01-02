@@ -55,15 +55,15 @@ fn vs_main(
     );
 
     let world_pos = model.position ;
-    let eps = 1e-4;
-    // ---- CLIPPING ----
-    let distance = dot(mirror.normal, world_pos - mirror.point);
-    if (distance < eps) {
-        // clip vertex
-        // Move vertex outside clip space
-        out.clip_position = vec4<f32>(0.0, 0.0, 2.0, 1.0);
-        return out;
-    }
+    // let eps = 1e-4;
+    // // ---- CLIPPING ----
+    // let distance = dot(mirror.normal, world_pos - mirror.point);
+    // if (distance > eps) {
+    //     // clip vertex
+    //     // Move vertex outside clip space
+    //     out.clip_position = vec4<f32>(0.0, 0.0, 2.0, 1.0);
+    //     return out;
+    // }
 
     out.tex_coords = model.tex_coords;
     out.clip_position = camera.view_proj * model_matrix * spin.model * vec4<f32>(model.position, 1.0);

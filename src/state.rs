@@ -172,7 +172,7 @@ impl State {
         let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
         let instance_buffer = create_instance_buffer(&device, &instance_data);
 
-        let mirror_instance = Instance::generate_instance(5.0, 0.0, 2.0, 240.0) ;
+        let mirror_instance = Instance::generate_instance(5.0, 1.0, 1.0, 45.0) ;
         let mirror_instance_data = mirror_instance.to_raw_with_scale(1.5);  // HACK
         let mirror_instance_buffer = create_instance_buffer(&device, &vec![mirror_instance_data]);
 
@@ -552,13 +552,14 @@ drop(debug_pass);
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
               view: &self.depth_stencil.view,
               depth_ops: Some(wgpu::Operations {
-              load: wgpu::LoadOp::Load, // <- clear depth again
+              load: wgpu::LoadOp::Clear(1.0), // <- clear depth again
               store: wgpu::StoreOp::Store,
             }),
-                stencil_ops: Some(wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                }),
+                // stencil_ops: Some(wgpu::Operations {
+                //     load: wgpu::LoadOp::Load,
+                //     store: wgpu::StoreOp::Store,
+                // }),
+                stencil_ops: None,
            }),
             occlusion_query_set: None,
             timestamp_writes: None,
