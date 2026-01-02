@@ -29,7 +29,7 @@ impl Texture {
             
            
             #[cfg(not(target_arch = "wasm32"))]
-            let texture = load_texture_from_image( &device, &queue,url)?;
+            let texture = load_texture_from_image( device, queue,url)?;
       
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             let sampler = device.create_sampler(

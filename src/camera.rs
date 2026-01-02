@@ -36,17 +36,17 @@ impl Camera {
         let  proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
             
         // 3.
-        return OPENGL_TO_WGPU_MATRIX  * proj * view;
+         OPENGL_TO_WGPU_MATRIX  * proj * view
     }
 
     pub fn build_view_only_matrix(&self) -> cgmath::Matrix4<f32> {
-        let view = cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up);
-        view
+        cgmath::Matrix4::look_at_rh(self.eye, self.target, self.up)
+    
     }
 
     pub fn build_proj_only_matrix(&self) -> cgmath::Matrix4<f32> {
         let  proj = cgmath::perspective(cgmath::Deg(self.fovy), self.aspect, self.znear, self.zfar);
-        return OPENGL_TO_WGPU_MATRIX  * proj;
+         OPENGL_TO_WGPU_MATRIX  * proj
     }
 
     pub fn build_reflected_camera(&self, reflection: cgmath::Matrix4<f32>) -> cgmath::Matrix4<f32> {
@@ -55,7 +55,7 @@ impl Camera {
         let view = self.build_view_only_matrix();
         let projection = self.build_proj_only_matrix();
         let reflected_view =  view * reflection  ;
-        return   projection * reflected_view ;
+        projection * reflected_view 
         // / 
     }
 }
@@ -70,6 +70,11 @@ pub struct CameraUniform {
     view_proj: [[f32; 4]; 4],
 }
 
+impl Default for CameraUniform {
+     fn default() -> Self {
+         Self::new()
+     }
+ }
 impl CameraUniform {
     pub fn new() -> Self {
         use cgmath::SquareMatrix;
@@ -77,6 +82,7 @@ impl CameraUniform {
             view_proj: cgmath::Matrix4::identity().into(),
         }
     }
+
 
     pub fn update_view_proj(&mut self, camera: &Camera) {
         self.view_proj = camera.build_view_projection_matrix().into();

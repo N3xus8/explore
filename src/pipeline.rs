@@ -1,7 +1,7 @@
 
 use anyhow::*;
 
-use crate::{model::{ModelVertex, Vertex}, texture, vertex::InstanceRaw};
+use crate::{model::{ModelVertex, Vertex}, vertex::InstanceRaw};
 use crate::vertex::Vertex as PrimitiveVertex;
 pub struct Pipeline {
    pub pipeline: wgpu::RenderPipeline,
@@ -20,13 +20,13 @@ impl Pipeline {
 
             let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("Shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/shader.wgsl").into()),
             });
 
             let render_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout, &spin_uniform_bind_group_layout, &mirror_plane_uniform_bind_group_layout],                
+                bind_group_layouts: &[texture_bind_group_layout, camera_uniform_bind_group_layout, spin_uniform_bind_group_layout, mirror_plane_uniform_bind_group_layout],                
                 push_constant_ranges: &[],
             });
 
@@ -100,13 +100,13 @@ impl Pipeline {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("stencil"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("stencil.wgsl").into()),
+                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/stencil.wgsl").into()),
             });
 
         let mask_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("mask_pipeline_layout"),
-                bind_group_layouts: &[&camera_uniform_bind_group_layout,], 
+                bind_group_layouts: &[camera_uniform_bind_group_layout,], 
                 push_constant_ranges: &[],
             });
 
@@ -170,13 +170,13 @@ impl Pipeline {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("mirror reflection"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("mirror_reflection.wgsl").into()),
+                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/mirror_reflection.wgsl").into()),
             });
         
         let render_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout, &spin_uniform_bind_group_layout, &mirror_plane_uniform_bind_group_layout],                
+                bind_group_layouts: &[texture_bind_group_layout, camera_uniform_bind_group_layout, spin_uniform_bind_group_layout, mirror_plane_uniform_bind_group_layout],                
                 push_constant_ranges: &[],
             });
 

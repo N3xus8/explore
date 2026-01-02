@@ -4,7 +4,7 @@ use cgmath::Vector3;
 use instant::Instant;
 use winit::{event_loop::ActiveEventLoop, keyboard::KeyCode, window::Window};
 
-use crate::{camera::{Camera, CameraController, CameraUniform, bind_group_for_camera_uniform, create_camera_buffer, create_camera_reflected_buffer}, depth_stencil::{self, StencilTexture}, extra::{MirrorPlaneUniform, Spin, SpinUniform}, model::{DrawModel, Model}, pipeline::Pipeline, resources, texture::{self, Texture}, utils::build_reflection_matrix, vertex::{INDICES, Instance, VERTICES, create_index_buffer, create_instance_buffer, create_vertex_buffer}};
+use crate::{camera::{Camera, CameraController, CameraUniform, bind_group_for_camera_uniform, create_camera_buffer, create_camera_reflected_buffer}, depth_stencil::{self, StencilTexture}, extra::{MirrorPlaneUniform, Spin, SpinUniform}, model::{DrawModel, Model}, pipeline::Pipeline, resources, texture::Texture, utils::build_reflection_matrix, vertex::{INDICES, Instance, VERTICES, create_index_buffer, create_instance_buffer, create_vertex_buffer}};
 
 
 pub struct State {
@@ -19,10 +19,10 @@ pub struct State {
     pub index_buffer: wgpu::Buffer, 
     pub num_indices: u32,
     #[allow(dead_code)]
-    pub diffuse_texture: texture::Texture,
+    pub diffuse_texture: Texture,
     pub diffuse_bind_group: wgpu::BindGroup,
      #[allow(dead_code)]
-    pub another_texture: texture::Texture,
+    pub another_texture: Texture,
     pub another_bind_group: wgpu::BindGroup,
     is_space_pressed: bool,
     camera: Camera,
@@ -47,7 +47,7 @@ pub struct State {
     mirror_plane_uniform: MirrorPlaneUniform,
     mirror_plane_buffer:  wgpu::Buffer,
     mirror_plane_bind_group: wgpu::BindGroup,
-    camera_reflected_uniform: CameraUniform,
+//    camera_reflected_uniform: CameraUniform,
     camera_reflected_buffer: wgpu::Buffer,
     camera_reflected_bind_group:  wgpu::BindGroup,
     debug_stencil_pipeline:  wgpu::RenderPipeline, // DEBUG
@@ -72,26 +72,22 @@ impl State {
         let surface = instance.create_surface(window.clone())?;
 
         // Adapter
-        let adapter;
-        if cfg!(target_arch = "wasm32") {
-            adapter = instance //  TODO select the most relevant adapter
+        
+        let adapter = if cfg!(target_arch = "wasm32") {
+            instance //  TODO select the most relevant adapter
                 .request_adapter(&wgpu::RequestAdapterOptions {
                     power_preference: wgpu::PowerPreference::default(),
                     compatible_surface: Some(&surface),
                     force_fallback_adapter: false,
                 })
-                .await?;
+                .await?
         } else {
-            adapter = instance // TODO select the most relevant adapter
+            instance // TODO select the most relevant adapter
                 .enumerate_adapters(wgpu::Backends::all())
                 .into_iter()
-                .filter(|adapter| {
-                    // Check if this adapter supports our surface
-                    adapter.is_surface_supported(&surface)
-                })
-                .next()
-                .ok_or(anyhow::anyhow!("No adapter found"))?;
-        }
+                .find(|adapter| adapter.is_surface_supported(&surface))
+                .ok_or(anyhow::anyhow!("No adapter found"))?
+        };
 
         // Device & Queue
         let (device, queue) = adapter
@@ -174,7 +170,7 @@ impl State {
 
         let mirror_instance = Instance::generate_instance(5.0, 1.0, 1.0, 45.0) ;
         let mirror_instance_data = mirror_instance.to_raw_with_scale(1.5);  // HACK
-        let mirror_instance_buffer = create_instance_buffer(&device, &vec![mirror_instance_data]);
+        let mirror_instance_buffer = create_instance_buffer(&device, &[mirror_instance_data]);
 
         // / M I R R O R  P L A N E  U N I F O R M 
 
@@ -206,8 +202,8 @@ impl State {
 
         let camera_controller = CameraController::new(0.1);
 
-        let mut camera_reflected_uniform = CameraUniform::new();
-        camera_reflected_uniform.update_view_proj(&camera);
+        let  camera_reflected_uniform = CameraUniform::new();
+        //camera_reflected_uniform.update_view_proj(&camera);
         let camera_reflected_buffer = create_camera_reflected_buffer(&camera_reflected_uniform, &device);
         let (camera_reflected_bind_group_layout, camera_reflected_bind_group) =   bind_group_for_camera_uniform(&camera_reflected_buffer, &device);
 
@@ -307,11 +303,11 @@ impl State {
             stencil_pipeline,
             reflection_pipeline,
             mirror_instance,
-            mirror_instance_buffer, // TODO review maybe reuse instance_buffer
+            mirror_instance_buffer, 
             mirror_plane_uniform,
             mirror_plane_buffer,
             mirror_plane_bind_group,
-            camera_reflected_uniform,
+//            camera_reflected_uniform,
             camera_reflected_bind_group,
             camera_reflected_buffer,
             debug_stencil_pipeline, // DEBUG

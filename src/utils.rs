@@ -1,4 +1,4 @@
-/// Load image in texture in native mode . i.e non wasm32.
+// / Load image in texture in native mode . i.e non wasm32.
 
 pub fn load_texture_from_image(
     device: &wgpu::Device,
@@ -99,7 +99,7 @@ pub fn build_reflection_matrix(mirror_transform: &cgmath::Matrix4<f32>, local_no
         let mirror_normal = normal_from_transform(mirror_transform, local_normal);
             
         // 2. Build reflection matrix
-        return reflection_matrix(mirror_point, mirror_normal);
+        reflection_matrix(mirror_point, mirror_normal)
 
 }
 

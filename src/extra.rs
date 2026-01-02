@@ -13,6 +13,12 @@ pub struct SpinUniform {
     model: [[f32; 4]; 4],
 }
 
+ impl Default for SpinUniform {
+     fn default() -> Self {
+         Self::new()
+     }
+}
+
 impl SpinUniform {
 // initialize 
     pub fn new() -> Self {
@@ -131,7 +137,7 @@ impl MirrorPlaneUniform {
 
     pub fn new(mirror_transform: &cgmath::Matrix4<f32>, local_normal: cgmath::Vector3<f32>) -> MirrorPlaneUniform {
 
-        Self { normal: utils::normal_from_transform(&mirror_transform, local_normal).into() , _pad1: 0.0, point: utils::point_from_transform(&mirror_transform).into() , _pad2: 0.0 }
+        Self { normal: utils::normal_from_transform(mirror_transform, local_normal).into() , _pad1: 0.0, point: utils::point_from_transform(mirror_transform).into() , _pad2: 0.0 }
     }
 
     pub fn create_bind_group_layout(

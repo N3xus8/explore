@@ -1,7 +1,5 @@
 use anyhow::*;
 
-use crate::{model::{ModelVertex, Vertex}, texture, vertex::InstanceRaw};
-use crate::vertex::Vertex as PrimitiveVertex;
 pub struct Pipeline {
    pub pipeline: wgpu::RenderPipeline,
 }
@@ -15,7 +13,7 @@ impl Pipeline {
 
             let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
                 label: Some("Debug"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("debug.wgsl").into()),
+                source: wgpu::ShaderSource::Wgsl(include_str!("shaders/debug.wgsl").into()),
             });
 
             let debug_pipeline_layout =

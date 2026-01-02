@@ -63,7 +63,7 @@ pub const VERTICES: &[Vertex] = &[
         tex_coords: [0.0048659444, 0.56958647],
     }, // B
     Vertex {
-        position: [-2.1918549, -4.4939706, 0.0],
+        position: [-2.191_855, -4.4939706, 0.0],
         tex_coords: [0.28081453, 0.05060294],
     }, // C
     Vertex {
@@ -135,7 +135,7 @@ impl Instance {
         }
     }
     pub fn generate_instances() -> Vec<Instance> {
-        let instances = (0..NUM_INSTANCES_PER_ROW).flat_map(|z| {
+         (0..NUM_INSTANCES_PER_ROW).flat_map(|z| {
             (0..NUM_INSTANCES_PER_ROW).map(move |x| {
                 let x = SPACE_BETWEEN * (x as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
                 let z = SPACE_BETWEEN * (z as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
@@ -152,9 +152,9 @@ impl Instance {
                     position, rotation,
                 }
             })
-        }).collect::<Vec<_>>();
+        }).collect::<Vec<_>>()
         
-        instances
+        
 
     }
 
@@ -235,12 +235,12 @@ impl InstanceRaw {
     }
 }
 
-pub fn create_instance_buffer(device: &wgpu::Device, instance_data: &Vec<InstanceRaw>) -> wgpu::Buffer {
+pub fn create_instance_buffer(device: &wgpu::Device, instance_data: &[InstanceRaw]) -> wgpu::Buffer {
 
      device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("Instance Buffer"),
-                contents: bytemuck::cast_slice(&instance_data),
+                contents: bytemuck::cast_slice(instance_data),
                 usage: wgpu::BufferUsages::VERTEX,
             }
         )
