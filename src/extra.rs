@@ -1,5 +1,7 @@
 use wgpu::util::DeviceExt;
 
+use crate::utils;
+
 
 
 #[repr(C)]
@@ -118,7 +120,7 @@ impl Spin {
 
 #[repr(C)]
 #[derive(Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
-struct MirrorPlaneUniform {
+pub struct MirrorPlaneUniform {
     normal: [f32; 3],  // normal: world-space mirror normal
     _pad1: f32,
     point: [f32; 3], // point: world-space point on the mirror plane
@@ -127,9 +129,9 @@ struct MirrorPlaneUniform {
 
 impl MirrorPlaneUniform {
 
-    pub fn new(normal: cgmath::Vector3<f32>, point: cgmath::Point3<f32>) -> MirrorPlaneUniform {
+    pub fn new(mirror_transform: &cgmath::Matrix4<f32>, local_normal: cgmath::Vector3<f32>) -> MirrorPlaneUniform {
 
-        Self { normal: normal.into() , _pad1: 0.0, point: point.into() , _pad2: 0.0 }
+        Self { normal: utils::normal_from_transform(&mirror_transform, local_normal).into() , _pad1: 0.0, point: utils::point_from_transform(&mirror_transform).into() , _pad2: 0.0 }
     }
 
     pub fn create_bind_group_layout(
@@ -175,4 +177,19 @@ impl MirrorPlaneUniform {
 
     }
 
+    pub fn mirror_plane_buffer(
+        &self,
+        device: &wgpu::Device,
+    ) -> wgpu::Buffer {
+
+            device.create_buffer_init(
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("Mirror Plane Buffer"),
+                    contents: bytemuck::cast_slice(&[*self]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                }
+            )
+
+
+    }
 }

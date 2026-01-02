@@ -11,6 +11,7 @@ pub mod model;
 pub mod resources;
 pub mod extra;
 pub mod depth_stencil;
+pub mod debugger;
 
 #[rustfmt::skip]
 pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::from_cols(

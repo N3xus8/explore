@@ -14,6 +14,7 @@ impl Pipeline {
                 texture_bind_group_layout: &wgpu::BindGroupLayout,
                 camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
                 spin_uniform_bind_group_layout: &wgpu::BindGroupLayout,
+                mirror_plane_uniform_bind_group_layout: &wgpu::BindGroupLayout,
         ) -> Result<Pipeline> {
 
 
@@ -25,7 +26,7 @@ impl Pipeline {
             let render_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout, &spin_uniform_bind_group_layout],                
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout, &spin_uniform_bind_group_layout, &mirror_plane_uniform_bind_group_layout],                
                 push_constant_ranges: &[],
             });
 
@@ -63,10 +64,21 @@ impl Pipeline {
                     conservative: false,
                 },
                     depth_stencil: Some(wgpu::DepthStencilState {
-                        format: texture::Texture::DEPTH_STENCIL_FORMAT,
+                        format: wgpu::TextureFormat::Depth24PlusStencil8,
                         depth_write_enabled: true,
                         depth_compare: wgpu::CompareFunction::Less, 
-                        stencil: wgpu::StencilState::default(), 
+                       // stencil: wgpu::StencilState::default(), 
+                        stencil: wgpu::StencilState {
+                            front: wgpu::StencilFaceState {
+                                compare: wgpu::CompareFunction::NotEqual,
+                                fail_op: wgpu::StencilOperation::Keep,
+                                depth_fail_op: wgpu::StencilOperation::Keep,
+                                pass_op: wgpu::StencilOperation::Keep,
+                            },
+                            back: wgpu::StencilFaceState::IGNORE,
+                            read_mask: 0xFF,
+                            write_mask: 0x00,
+                        }, 
                         bias: wgpu::DepthBiasState::default(),
                     }), 
                     multisample: wgpu::MultisampleState {
@@ -151,18 +163,19 @@ impl Pipeline {
             texture_bind_group_layout: &wgpu::BindGroupLayout,
             camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
             spin_uniform_bind_group_layout: &wgpu::BindGroupLayout,
+            mirror_plane_uniform_bind_group_layout: &wgpu::BindGroupLayout,
 
     )  -> Result<Pipeline> {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some("shader"),
-                source: wgpu::ShaderSource::Wgsl(include_str!("shader.wgsl").into()),
+                label: Some("mirror reflection"),
+                source: wgpu::ShaderSource::Wgsl(include_str!("mirror_reflection.wgsl").into()),
             });
         
         let render_pipeline_layout =
                 device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
                 label: Some("Render Pipeline Layout"),
-                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout, &spin_uniform_bind_group_layout],                
+                bind_group_layouts: &[&texture_bind_group_layout, &camera_uniform_bind_group_layout, &spin_uniform_bind_group_layout, &mirror_plane_uniform_bind_group_layout],                
                 push_constant_ranges: &[],
             });
 

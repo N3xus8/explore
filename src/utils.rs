@@ -58,6 +58,7 @@ pub fn load_texture_from_image(
 }
 
 
+use cgmath::Vector3;
 use winit::window::Icon;
 
 pub fn load_icon(path: &str) -> Icon {
@@ -92,20 +93,26 @@ pub fn linear_to_srgb(linear: f64) -> f64 {
     )
 }
 
-pub fn build_reflection_matrix(mirror_transform: cgmath::Matrix4<f32>) -> cgmath::Matrix4<f32> {
-    use cgmath::InnerSpace;
-    use cgmath::{Transform, EuclideanSpace};
+pub fn build_reflection_matrix(mirror_transform: &cgmath::Matrix4<f32>, local_normal: Vector3<f32>) -> cgmath::Matrix4<f32> {
+        let mirror_point = point_from_transform(mirror_transform);
 
-        let mirror_point = mirror_transform.transform_point(cgmath::Point3::origin());
-        let local_normal = cgmath::Vector3::unit_z();
-        
-        let mirror_normal = 
-            mirror_transform
-                .transform_vector(local_normal)
-                .normalize();
+        let mirror_normal = normal_from_transform(mirror_transform, local_normal);
+            
         // 2. Build reflection matrix
         return reflection_matrix(mirror_point, mirror_normal);
 
+}
 
+pub fn point_from_transform(mirror_transform: &cgmath::Matrix4<f32>) -> cgmath::Point3<f32> {
+    use cgmath::{Transform, EuclideanSpace};
+    mirror_transform.transform_point(cgmath::Point3::origin())
+}
+
+pub fn normal_from_transform(mirror_transform: &cgmath::Matrix4<f32>, local_normal: Vector3<f32>) -> Vector3<f32> {
+    use cgmath::InnerSpace;
+    use cgmath::Transform;
+            mirror_transform
+                .transform_vector(local_normal)
+                .normalize()
 
 }

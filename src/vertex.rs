@@ -45,14 +45,36 @@ impl Vertex {
 //     Vertex { position: [0.44147372, 0.2347359, 0.0], color: [0.5, 0.0, 0.5] }, // E
 // ];
 
+// pub const VERTICES: &[Vertex] = &[
+//     Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.99240386], }, // A
+//     Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.56958647], }, // B
+//     Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.28081453, 0.05060294], }, // C
+//     Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.85967, 0.1526709], }, // D
+//     Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.9414737, 0.7347359], }, // E
+// ];
+
 pub const VERTICES: &[Vertex] = &[
-    Vertex { position: [-0.0868241, 0.49240386, 0.0], tex_coords: [0.4131759, 0.99240386], }, // A
-    Vertex { position: [-0.49513406, 0.06958647, 0.0], tex_coords: [0.0048659444, 0.56958647], }, // B
-    Vertex { position: [-0.21918549, -0.44939706, 0.0], tex_coords: [0.28081453, 0.05060294], }, // C
-    Vertex { position: [0.35966998, -0.3473291, 0.0], tex_coords: [0.85967, 0.1526709], }, // D
-    Vertex { position: [0.44147372, 0.2347359, 0.0], tex_coords: [0.9414737, 0.7347359], }, // E
+    Vertex {
+        position: [-0.868241, 4.9240386, 0.0],
+        tex_coords: [0.4131759, 0.99240386],
+    }, // A
+    Vertex {
+        position: [-4.9513406, 0.6958647, 0.0],
+        tex_coords: [0.0048659444, 0.56958647],
+    }, // B
+    Vertex {
+        position: [-2.1918549, -4.4939706, 0.0],
+        tex_coords: [0.28081453, 0.05060294],
+    }, // C
+    Vertex {
+        position: [3.5966997, -3.473291, 0.0],
+        tex_coords: [0.85967, 0.1526709],
+    }, // D
+    Vertex {
+        position: [4.414737, 2.347359, 0.0],
+        tex_coords: [0.9414737, 0.7347359],
+    }, // E
 ];
- 
 
 pub const INDICES: &[u16] = &[
     0, 1, 4,
@@ -107,7 +129,11 @@ impl Instance {
             model: (cgmath::Matrix4::from_translation(self.position) * cgmath::Matrix4::from(self.rotation)).into(),
         }
     }
-
+    pub fn to_raw_with_scale(&self, scale: f32) -> InstanceRaw {
+        InstanceRaw {
+            model: (cgmath::Matrix4::from_translation(self.position) * cgmath::Matrix4::from(self.rotation) * Matrix4::from_nonuniform_scale(scale, scale, 1.0)).into(),
+        }
+    }
     pub fn generate_instances() -> Vec<Instance> {
         let instances = (0..NUM_INSTANCES_PER_ROW).flat_map(|z| {
             (0..NUM_INSTANCES_PER_ROW).map(move |x| {
@@ -141,7 +167,7 @@ impl Instance {
              let position = cgmath::Vector3 { x, y, z };
 
 
-             let rotation=   cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(angle));
+             let rotation=   cgmath::Quaternion::from_axis_angle(cgmath::Vector3::unit_y(), cgmath::Deg(angle));
              
 
                 Instance {
@@ -157,9 +183,9 @@ impl Instance {
         Matrix4::from(self.rotation)
     }
 
-    pub fn transform(&self, scale: f32)  -> cgmath::Matrix4<f32> {
-        let scale = Matrix4::from_nonuniform_scale(scale, scale, 1.0);
-        self.translation() * self.rotation() * scale
+    pub fn transform(&self)  -> cgmath::Matrix4<f32> {
+
+        self.translation() * self.rotation() 
     
     }
 }

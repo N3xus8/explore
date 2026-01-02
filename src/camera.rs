@@ -83,7 +83,7 @@ impl CameraUniform {
     }
 }
 
-    pub fn camera_buffer(
+    pub fn create_camera_buffer(
         camera_uniform: &CameraUniform,
         device: &wgpu::Device,
     ) -> wgpu::Buffer {
@@ -98,6 +98,21 @@ impl CameraUniform {
 
 
     }
+    pub fn create_camera_reflected_buffer(
+        camera_uniform: &CameraUniform,
+        device: &wgpu::Device,
+    ) -> wgpu::Buffer {
+
+            device.create_buffer_init(
+                &wgpu::util::BufferInitDescriptor {
+                    label: Some("Camera Buffer"),
+                    contents: bytemuck::cast_slice(&[*camera_uniform]),
+                    usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+                }
+            )
+
+
+    }   
 
 
     pub fn bind_group_for_camera_uniform(camera_buffer: &wgpu::Buffer, 
