@@ -50,6 +50,7 @@ pub struct State {
 //    camera_reflected_uniform: CameraUniform,
     camera_reflected_buffer: wgpu::Buffer,
     camera_reflected_bind_group:  wgpu::BindGroup,
+    mirror_surface_pipeline: wgpu::RenderPipeline,
     debug_stencil_pipeline:  wgpu::RenderPipeline, // DEBUG
     pub window: Arc<Window>,
 }
@@ -168,7 +169,7 @@ impl State {
         let instance_data = instances.iter().map(Instance::to_raw).collect::<Vec<_>>();
         let instance_buffer = create_instance_buffer(&device, &instance_data);
 
-        let mirror_instance = Instance::generate_instance(5.0, 1.0, 1.0, 45.0) ;
+        let mirror_instance = Instance::generate_instance(5.0, 1.0, 2.0, 45.0) ;
         let mirror_instance_data = mirror_instance.to_raw_with_scale(1.5);  // HACK
         let mirror_instance_buffer = create_instance_buffer(&device, &[mirror_instance_data]);
 
@@ -260,6 +261,16 @@ impl State {
             &mirror_plane_bind_group_layout,)?;
 
         let reflection_pipeline = reflection_pipeline_struct.pipeline ;
+
+        // Mirror surface pipeline
+
+        let mirror_surface_pipeline_struct = Pipeline::mirror_surface_render_pipeline(
+            &device, 
+            &config, 
+            &camera_bind_group_layout)?;
+        
+        let mirror_surface_pipeline = mirror_surface_pipeline_struct.pipeline ;
+        
         
         // ================================
         // /  D E B U G G I N G 
@@ -310,6 +321,7 @@ impl State {
 //            camera_reflected_uniform,
             camera_reflected_bind_group,
             camera_reflected_buffer,
+            mirror_surface_pipeline,
             debug_stencil_pipeline, // DEBUG
             window,
         })
@@ -548,7 +560,7 @@ drop(debug_pass);
             depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
               view: &self.depth_stencil.view,
               depth_ops: Some(wgpu::Operations {
-              load: wgpu::LoadOp::Clear(1.0), // <- clear depth again
+              load: wgpu::LoadOp::Load, // <- clear depth again
               store: wgpu::StoreOp::Store,
             }),
                 // stencil_ops: Some(wgpu::Operations {
@@ -568,7 +580,6 @@ drop(debug_pass);
             };
 
         render_pass.set_pipeline(&self.render_pipeline); 
-//        render_pass.set_stencil_reference(1);
         render_pass.set_bind_group(0, bind_group, &[]);
         render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
         render_pass.set_bind_group(2, &self.spin_bind_group, &[]);
@@ -582,6 +593,42 @@ drop(debug_pass);
         // TODO MIRROR 
         drop(render_pass); 
 
+
+        // / M I R R O R   S U R F A C E 
+        // /
+        self.queue.write_buffer(&self.camera_buffer, 0, bytemuck::cast_slice(&[self.camera_uniform]));       
+
+        let mut mirror_surface_render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("mirror surface Render Pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load, // <- DO NOT CLEAR
+                    store: wgpu::StoreOp::Store,
+                },
+            })],           
+            depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+              view: &self.depth_stencil.view,
+              depth_ops: Some(wgpu::Operations {
+              load: wgpu::LoadOp::Load, // <- clear depth again
+              store: wgpu::StoreOp::Store,
+            }),
+              stencil_ops: None,
+           }),
+            occlusion_query_set: None,
+            timestamp_writes: None,
+        });
+
+        mirror_surface_render_pass.set_pipeline(&self.mirror_surface_pipeline);
+        mirror_surface_render_pass.set_bind_group(0, &self.camera_bind_group, &[]);
+        mirror_surface_render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+        mirror_surface_render_pass.set_vertex_buffer(1, self.mirror_instance_buffer.slice(..));
+        mirror_surface_render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+        mirror_surface_render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+
+        drop(mirror_surface_render_pass);
            
          // submit will accept anything that implements IntoIter
         self.queue.submit(std::iter::once(encoder.finish()));
