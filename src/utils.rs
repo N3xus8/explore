@@ -1,17 +1,20 @@
 // / Load image in texture in native mode . i.e non wasm32.
 
-pub fn load_texture_from_image(
-    device: &wgpu::Device,
-    queue: &wgpu::Queue,
-    url: &str,
-) -> anyhow::Result<wgpu::Texture> {
+pub fn load_image(url: &str) -> anyhow::Result<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>> {
 
     // Image uses Rayon not available in Wasm
 
     let path = std::path::Path::new(env!("OUT_DIR"))
             .join("res")
             .join(url);
-    let img = image::open(path)?.flipv().into_rgba8();
+    Ok(image::open(path)?.flipv().into_rgba8())
+}
+
+pub fn create_texture_from_image(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    img: image::ImageBuffer<image::Rgba<u8>, Vec<u8>>,
+) -> anyhow::Result<wgpu::Texture> {
 
     let width = img.width();
     let height = img.height();

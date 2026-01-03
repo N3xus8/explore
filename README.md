@@ -21,8 +21,8 @@ This is achieved with 4 render pass basically:
 3. Pass to render the rest of the world
 4. Pass to render the mirror surface with texture/tint/blending (optional)
 
-The cool thing about [WGPU](https://github.com/gfx-rs/wgpu) ([WEBGPU](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API)) is that the same code works for desktops and web browsers (WASM).
-It requiers a heavy setup upfront but later on it is almost painless(not 100% though).
+The cool thing about [WGPU](https://github.com/gfx-rs/wgpu) ([WEBGPU](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API)) is that the same code works for both desktops and web browsers (WASM).
+It requires a heavy setup upfront but later on it is almost painless(not 100% though).
 
 I used **Rust** *1.92 nightly*.
 

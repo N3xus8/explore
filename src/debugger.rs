@@ -8,6 +8,7 @@ impl Pipeline {
     pub fn debug_render_pipeline(
             device: &wgpu::Device,
             config: &wgpu::SurfaceConfiguration,
+            sample_count: u32,
     )  -> Result<Pipeline> {
 
 
@@ -61,7 +62,11 @@ impl Pipeline {
                     },
                     bias: Default::default(),
                 }),
-                multisample: wgpu::MultisampleState::default(),
+                multisample: wgpu::MultisampleState {
+                        count: sample_count, // 2.
+                        mask: !0, // 3.
+                        alpha_to_coverage_enabled: false, // 4.
+                    },
                 multiview: None,
                 cache: None,
             },

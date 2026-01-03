@@ -11,6 +11,7 @@ impl Pipeline {
     pub fn build_render_pipeline(
                 device: &wgpu::Device,
                 config: &wgpu::SurfaceConfiguration,
+                sample_count: u32,
                 texture_bind_group_layout: &wgpu::BindGroupLayout,
                 camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
                 spin_uniform_bind_group_layout: &wgpu::BindGroupLayout,
@@ -83,7 +84,7 @@ impl Pipeline {
                         bias: wgpu::DepthBiasState::default(),
                     }), 
                     multisample: wgpu::MultisampleState {
-                        count: 1, // 2.
+                        count: sample_count, // 2.
                         mask: !0, // 3.
                         alpha_to_coverage_enabled: false, // 4.
                     },
@@ -96,6 +97,7 @@ impl Pipeline {
     pub fn mask_render_pipeline(
             device: &wgpu::Device,
             camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
+            sample_count: u32,
     )  -> Result<Pipeline> {
 
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -138,7 +140,10 @@ impl Pipeline {
                         },
                         bias: wgpu::DepthBiasState::default(),
                     }), 
-                    multisample: wgpu::MultisampleState::default(),
+                    multisample:  wgpu::MultisampleState {
+                        count: sample_count,
+                        ..Default::default()
+                    },
                     multiview: None, 
                     cache: None, 
             });
@@ -153,6 +158,7 @@ impl Pipeline {
             camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
             spin_uniform_bind_group_layout: &wgpu::BindGroupLayout,
             mirror_plane_uniform_bind_group_layout: &wgpu::BindGroupLayout,
+            sample_count: u32,
 
     )  -> Result<Pipeline> {
 
@@ -211,7 +217,10 @@ impl Pipeline {
             },
             multiview: None, 
             cache: None, 
-            multisample: wgpu::MultisampleState::default(),
+            multisample: wgpu::MultisampleState {
+                        count: sample_count,
+                        ..Default::default()
+                    },
         });
 
         Ok(Self {pipeline: reflected_pipeline})
@@ -222,6 +231,7 @@ impl Pipeline {
                 device: &wgpu::Device,
                 config: &wgpu::SurfaceConfiguration,
                 camera_uniform_bind_group_layout: &wgpu::BindGroupLayout,
+                sample_count: u32,
         ) -> Result<Pipeline> {
 
 
@@ -291,7 +301,7 @@ impl Pipeline {
                         bias: wgpu::DepthBiasState::default(),
                     }), 
                     multisample: wgpu::MultisampleState {
-                        count: 1, // 2.
+                        count: sample_count, // 2.
                         mask: !0, // 3.
                         alpha_to_coverage_enabled: false, // 4.
                     },

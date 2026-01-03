@@ -7,7 +7,7 @@ pub struct StencilTexture {
 
 impl StencilTexture {
 
-    pub fn create_stencil_texture(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, label: &str) -> Self{
+    pub fn create_stencil_texture(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, label: &str, sample_count: u32) -> Self{
         
         let size = wgpu::Extent3d { 
             width: config.width.max(1),
@@ -21,7 +21,7 @@ impl StencilTexture {
             label: Some(label),
             size,
             mip_level_count: 1,
-            sample_count: 1,
+            sample_count: sample_count,
             dimension: wgpu::TextureDimension::D2,
             format: depth_stencil_format,
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -32,5 +32,7 @@ impl StencilTexture {
 
         Self { texture: depth_stencil_texture, view: depth_stencil_view}
     }
+
+
 }
 

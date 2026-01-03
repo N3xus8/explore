@@ -3,7 +3,7 @@ use anyhow::*;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::UnwrapThrowExt;
 #[cfg(not(target_arch = "wasm32"))] 
-use crate::utils::load_texture_from_image;
+use crate::utils::{create_texture_from_image, load_image};
 #[cfg(target_arch = "wasm32")] 
 use crate::web_utils::load_texture_from_image_web;
 
@@ -18,7 +18,7 @@ impl Texture {
 
     pub async fn get_texture_from_image(
                 device: &wgpu::Device,
-                queue: &wgpu::Queue, 
+                queue: &wgpu::Queue,
                 url: &str
         ) -> Result<Self> {
 
@@ -29,7 +29,9 @@ impl Texture {
             
            
             #[cfg(not(target_arch = "wasm32"))]
-            let texture = load_texture_from_image( device, queue,url)?;
+            let img = load_image(url)?;
+
+            let texture = create_texture_from_image( device, queue, img )?;
       
             let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
             let sampler = device.create_sampler(
@@ -141,4 +143,32 @@ impl Texture {
         Self { texture, view, sampler }
     }
     
+    
 }
+
+pub fn create_multisampled_view(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,        
+        sample_count: u32,
+    ) -> wgpu::TextureView {
+
+         let multisampled_texture_extent = wgpu::Extent3d {
+            width: config.width.max(1),
+            height: config.height.max(1),
+            depth_or_array_layers: 1,
+        };
+        let multisampled_frame_descriptor = &wgpu::TextureDescriptor {
+            size: multisampled_texture_extent,
+            mip_level_count: 1,
+            sample_count,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::Bgra8UnormSrgb,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            label: None,
+            view_formats: &[],
+        };
+
+        device
+            .create_texture(multisampled_frame_descriptor)
+            .create_view(&wgpu::TextureViewDescriptor::default())
+    }

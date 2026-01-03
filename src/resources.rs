@@ -56,7 +56,7 @@ pub async fn load_texture(
     queue: &wgpu::Queue,
 ) -> anyhow::Result<texture::Texture> {
 
-    texture::Texture::get_texture_from_image(device, queue, file_name).await
+    texture::Texture::get_texture_from_image(device, queue,file_name ).await
 }
 
 pub async fn load_model(
