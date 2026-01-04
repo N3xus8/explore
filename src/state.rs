@@ -146,7 +146,7 @@ impl State {
 
         // Texture from Image
 
-        let sample_count: u32 = 1;
+        let sample_count: u32 = 4;
         //let url = "images/github-colored-logo.png";
         let url = "images/wgpu-logo.png";        
         let diffuse_texture = crate::texture::Texture::get_texture_from_image(&device, &queue, url).await?;

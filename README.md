@@ -58,4 +58,5 @@ So on *Linux*:
 ### **Check this out:** 
 
 
-<img src="Mirror_WGPU.png" width="800" height="600">
+
+[![Watch the video](https://github.com/N3xus8/explore/blob/main/Mirror_WGPU.png)](https://github.com/N3xus8/explore/blob/main/Mirror_WGPU.png/mirror.mp4)
