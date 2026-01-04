@@ -1,4 +1,3 @@
-
 pub struct StencilTexture {
     #[allow(unused)]
     pub texture: wgpu::Texture,
@@ -6,10 +5,13 @@ pub struct StencilTexture {
 }
 
 impl StencilTexture {
-
-    pub fn create_stencil_texture(device: &wgpu::Device, config: &wgpu::SurfaceConfiguration, label: &str, sample_count: u32) -> Self{
-        
-        let size = wgpu::Extent3d { 
+    pub fn create_stencil_texture(
+        device: &wgpu::Device,
+        config: &wgpu::SurfaceConfiguration,
+        label: &str,
+        sample_count: u32,
+    ) -> Self {
+        let size = wgpu::Extent3d {
             width: config.width.max(1),
             height: config.height.max(1),
             depth_or_array_layers: 1,
@@ -30,9 +32,9 @@ impl StencilTexture {
 
         let depth_stencil_view = depth_stencil_texture.create_view(&Default::default());
 
-        Self { texture: depth_stencil_texture, view: depth_stencil_view}
+        Self {
+            texture: depth_stencil_texture,
+            view: depth_stencil_view,
+        }
     }
-
-
 }
-

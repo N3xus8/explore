@@ -25,10 +25,10 @@ cfg_if::cfg_if! {
                 .unwrap()
                 .dyn_into::<HtmlImageElement>()
                 .unwrap();
-            
+
             img.set_cross_origin(Some("anonymous")); // Crucial for canvas security
-            
-            
+
+
             let img_clone = img.clone();
             // 1. Create the closures first
             let onload = Closure::once_into_js(move || {
@@ -38,7 +38,7 @@ cfg_if::cfg_if! {
 
             let onerror = Closure::once_into_js(move |err_event: JsValue| {
                 web_sys::console::error_2(&JsValue::from_str("Image LOAD FAILED Details: "), &err_event);
-    
+
             // Optional: If you want to see if it's a specific DOM Exception type
             // web_sys::console::dir(&err_event);
                 let _ = reject.call0(&JsValue::NULL);
@@ -68,7 +68,7 @@ cfg_if::cfg_if! {
 
             match wasm_bindgen_futures::JsFuture::from(promise).await
             {
-               Ok(result) => {        
+               Ok(result) => {
                     let img: HtmlImageElement = result.dyn_into()?;
 
                     let width = img.width();
@@ -120,7 +120,7 @@ cfg_if::cfg_if! {
 
                     Ok(texture)
                 }
-            
+
                Err(e) => {
                 log::error!("Promise rejected: {:?}", e);
                 return Err(e);

@@ -31,10 +31,10 @@ impl App {
 }
 impl Default for App {
     fn default() -> Self {
-                 Self::new()
+        Self::new()
     }
- }
- 
+}
+
 impl ApplicationHandler<State> for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         #[allow(unused_mut)]
@@ -57,14 +57,13 @@ impl ApplicationHandler<State> for App {
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-           // use crate::utils::load_icon;
+            // use crate::utils::load_icon;
 
             //let window_icon: Option<winit::window::Icon> = Some(load_icon("./assets/icon.png"));
-            window_attributes = window_attributes
-                .with_title("Ubik says Learn WGPU");
-                //.with_window_icon(window_icon);
+            window_attributes = window_attributes.with_title("Ubik says Learn WGPU");
+            //.with_window_icon(window_icon);
         }
-        
+
         let window = Arc::new(event_loop.create_window(window_attributes).unwrap());
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -123,7 +122,6 @@ impl ApplicationHandler<State> for App {
             WindowEvent::RedrawRequested => {
                 state.update();
                 match state.render() {
-
                     Ok(_) => {}
                     // Reconfigure the surface if it's lost or outdated
                     Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
@@ -133,7 +131,6 @@ impl ApplicationHandler<State> for App {
                     Err(e) => {
                         log::error!("Unable to render {}", e);
                     }
-
                 };
             }
             WindowEvent::KeyboardInput {
