@@ -5,8 +5,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::keyboard::PhysicalKey;
 use winit::window::Window;
 
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::UnwrapThrowExt;
+
 #[cfg(target_arch = "wasm32")]
 use winit::event_loop::EventLoop;
 

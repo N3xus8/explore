@@ -54,6 +54,8 @@ So on *Linux*:
 ```bash
 > sudo caddy run --config Caddyfile --adapter caddyfile 
 ```
+**Important Note:**
+If you run MSAA (i.e sample = 4), you need to run the code in a browser that supports **WEBGPU**. For example: [Firefox Nightly](https://nightly.mozfr.org/)
 
 ### **Check this out:** 
 

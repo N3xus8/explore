@@ -158,7 +158,7 @@ impl State {
 
         // Texture from Image
 
-        let sample_count: u32 = 1;
+        let sample_count: u32 = 4;
         //let url = "images/github-colored-logo.png";
         let url = "images/wgpu-logo.png";
         let diffuse_texture =
@@ -440,6 +440,9 @@ impl State {
         let view = output
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
+            // .create_view(&wgpu::TextureViewDescriptor{
+            //     format: Some(wgpu::TextureFormat::Rgba8Unorm),  
+            //     ..Default::default()});
 
         let mut encoder = self
             .device
