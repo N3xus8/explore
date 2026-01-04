@@ -1,11 +1,12 @@
 use anyhow::*;
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::utils::{create_texture_from_image, load_image};
+use crate::utils::{load_image, create_texture_from_image};
 #[cfg(target_arch = "wasm32")]
 use crate::web_utils::load_texture_from_image_web;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::UnwrapThrowExt;
+
 
 pub struct Texture {
     #[allow(unused)]
@@ -28,7 +29,7 @@ impl Texture {
 
         #[cfg(not(target_arch = "wasm32"))]
         let img = load_image(url)?;
-
+        #[cfg(not(target_arch = "wasm32"))]
         let texture = create_texture_from_image(device, queue, img)?;
 
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
@@ -158,7 +159,10 @@ pub fn create_multisampled_view(
         mip_level_count: 1,
         sample_count,
         dimension: wgpu::TextureDimension::D2,
+        #[cfg(not(target_arch = "wasm32"))]
         format: wgpu::TextureFormat::Bgra8UnormSrgb,
+        #[cfg(target_arch = "wasm32")]
+        format: wgpu::TextureFormat::Rgba8UnormSrgb,
         usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
         label: None,
         view_formats: &[],
