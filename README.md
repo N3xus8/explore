@@ -59,4 +59,4 @@ So on *Linux*:
 
 
 
-[![Watch the video](https://github.com/N3xus8/explore/blob/main/Mirror_WGPU.png)](https://github.com/N3xus8/explore/blob/main/Mirror_WGPU.png/mirror.mp4)
+[![Watch the video](mirror.gif)]
